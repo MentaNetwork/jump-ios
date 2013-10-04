@@ -147,14 +147,19 @@
     if (!hidesCancelButton)
     {
         UIBarButtonItem *cancelButton =
-                [[[UIBarButtonItem alloc]
-                        initWithBarButtonSystemItem:UIBarButtonSystemItemCancel
-                                             target:sessionData
-                                             action:@selector(triggerAuthenticationDidCancel:)] autorelease];
-
+        [[UIBarButtonItem alloc] initWithTitle:@"CANCEL"
+                                         style:UIBarButtonItemStylePlain
+                                        target:sessionData
+                                        action:@selector(triggerAuthenticationDidCancel:)];
+        
+        // Entutele
+        cancelButton.tintColor = kTLColorButton;
+        [cancelButton setTitleTextAttributes:@{UITextAttributeFont:[UIFont fontWithName:@"Lato-Regular" size:12]} forState:UIControlStateNormal];
+        
         self.navigationItem.leftBarButtonItem = cancelButton;
         self.navigationItem.leftBarButtonItem.enabled = YES;
         self.navigationItem.leftBarButtonItem.style = UIBarButtonItemStyleBordered;
+
     }
 
     if (!infoBar)

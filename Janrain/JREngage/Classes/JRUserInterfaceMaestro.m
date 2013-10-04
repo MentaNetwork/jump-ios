@@ -782,7 +782,7 @@ static JRUserInterfaceMaestro *singleton = nil;
             if (applicationNavigationController && [applicationNavigationController isViewLoaded]) {
                 usingAppNav = YES;
                 isAppNavTranslucent = applicationNavigationController.navigationBar.translucent;
-                applicationNavigationController.navigationBar.translucent = NO;
+                applicationNavigationController.navigationBar.translucent = YES;
             } else if (customModalNavigationController) {
                 usingCustomNav = YES;
             }

@@ -81,9 +81,25 @@
     [super viewDidLoad];
 
     myWebView.backgroundColor = [UIColor clearColor];
+    
+    UIBarButtonItem *cancelButton =
+    [[UIBarButtonItem alloc] initWithTitle:@"LOGIN"
+                                     style:UIBarButtonItemStylePlain
+                                    target:self
+                                    action:@selector(goTheFuckBack:)];
+    cancelButton.tintColor = kTLColorButton;
+    [cancelButton setTitleTextAttributes:@{UITextAttributeFont:[UIFont fontWithName:@"Lato-Regular" size:12]} forState:UIControlStateNormal];
+    
+    self.navigationItem.leftBarButtonItem = cancelButton;
+    if ([self respondsToSelector:@selector(edgesForExtendedLayout)]) {
+        self.edgesForExtendedLayout = UIRectEdgeNone;
+    }
 
-    self.navigationItem.backBarButtonItem.target = sessionData;
-    self.navigationItem.backBarButtonItem.action = @selector(triggerAuthenticationDidStartOver:);
+}
+
+- (void)goTheFuckBack:(id)sender
+{
+    [self.navigationController popViewControllerAnimated:YES];
 }
 
 - (void)viewWillAppear:(BOOL)animated
@@ -276,7 +292,7 @@
 - (void)startProgress
 {
     ([UIApplication sharedApplication]).networkActivityIndicatorVisible = YES;
-    [infoBar startProgress];
+//    [infoBar startProgress];
 }
 
 - (void)stopProgress
@@ -287,7 +303,7 @@
     }
 
     keepProgress = NO;
-    [infoBar stopProgress];
+//    [infoBar stopProgress];
 }
 
 #pragma mark JRConnectionManagerDelegate implementation
