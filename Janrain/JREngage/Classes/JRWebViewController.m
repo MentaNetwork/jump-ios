@@ -71,6 +71,15 @@
         sessionData = [JRSessionData jrSessionData];
         customInterface = [theCustomInterface retain];
     }
+    UIBarButtonItem *cancelButton =
+    [[UIBarButtonItem alloc] initWithTitle:@"CANCEL"
+                                     style:UIBarButtonItemStyleBordered
+                                    target:self
+                                    action:@selector(goTheFuckBack:)];
+    cancelButton.tintColor = kTLColorButton;
+    [cancelButton setTitleTextAttributes:@{UITextAttributeFont:[UIFont fontWithName:@"Lato-Regular" size:12]} forState:UIControlStateNormal];
+    
+    self.navigationItem.leftBarButtonItem = cancelButton;
 
     return self;
 }
@@ -82,15 +91,6 @@
 
     myWebView.backgroundColor = [UIColor clearColor];
     
-    UIBarButtonItem *cancelButton =
-    [[UIBarButtonItem alloc] initWithTitle:@"LOGIN"
-                                     style:UIBarButtonItemStylePlain
-                                    target:self
-                                    action:@selector(goTheFuckBack:)];
-    cancelButton.tintColor = kTLColorButton;
-    [cancelButton setTitleTextAttributes:@{UITextAttributeFont:[UIFont fontWithName:@"Lato-Regular" size:12]} forState:UIControlStateNormal];
-    
-    self.navigationItem.leftBarButtonItem = cancelButton;
     if ([self respondsToSelector:@selector(edgesForExtendedLayout)]) {
         self.edgesForExtendedLayout = UIRectEdgeNone;
     }
