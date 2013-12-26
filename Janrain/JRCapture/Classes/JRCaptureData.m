@@ -86,12 +86,15 @@ static NSString *const FLOW_KEY = @"JR_capture_flow";
 @property(nonatomic, retain) NSString *captureTraditionalRegistrationFormName;
 @property(nonatomic, retain) NSString *captureSocialRegistrationFormName;
 @property(nonatomic, retain) NSString *captureForgottenPasswordFormName;
+@property(nonatomic, retain) NSString *captureEditProfileFormName;
 
 //@property(nonatomic) JRTraditionalSignInType captureTradSignInType;
 @property(nonatomic) BOOL captureEnableThinRegistration;
 
 @property(nonatomic, retain) NSDictionary *captureFlow;
+@property(nonatomic, retain) NSArray *linkedProfiles;
 @property(nonatomic) BOOL initialized;
+@property(nonatomic) BOOL socialSignMode;
 @end
 
 @implementation JRCaptureData
@@ -109,6 +112,7 @@ static JRCaptureData *singleton = nil;
 @synthesize captureTraditionalRegistrationFormName;
 @synthesize captureSocialRegistrationFormName;
 @synthesize captureForgottenPasswordFormName;
+@synthesize captureEditProfileFormName;
 @synthesize captureFlowVersion;
 @synthesize captureAppId;
 @synthesize captureFlow;
@@ -141,6 +145,13 @@ static JRCaptureData *singleton = nil;
     }
 
     return singleton;
+}
+
++ (NSArray *)getLinkedProfiles {
+    if(singleton) {
+        return [singleton linkedProfiles];
+    }
+    return nil;
 }
 
 + (id)allocWithZone:(NSZone *)zone
@@ -252,6 +263,7 @@ static JRCaptureData *singleton = nil;
     captureDataInstance.captureFlowVersion = config.captureFlowVersion;
     captureDataInstance.captureAppId = config.captureAppId;
     captureDataInstance.captureForgottenPasswordFormName = config.forgottenPasswordFormName;
+    captureDataInstance.captureEditProfileFormName = config.editProfileFormName;
     captureDataInstance.passwordRecoverUri = config.passwordRecoverUri;
 
     if ([captureDataInstance.captureLocale length] &&
@@ -433,6 +445,7 @@ static JRCaptureData *singleton = nil;
     [passwordRecoverUri release];
     [captureSocialRegistrationFormName release];
     [captureForgottenPasswordFormName release];
+    [captureEditProfileFormName release];
     [super dealloc];
 }
 
@@ -456,8 +469,24 @@ static JRCaptureData *singleton = nil;
     [JRCaptureData sharedCaptureData].bpChannelUrl = bpChannelUrl;
 }
 
++ (void)setLinkedProfiles:(NSArray *)profileData {
+    NSMutableArray *returnArray = [[NSMutableArray alloc]init];
+    if([profileData count] > 0) {
+        for(NSDictionary *dict in profileData) {
+            
+            NSDictionary *tempDict = @{
+                                       @"verifiedEmail" : ([[dict objectForKey:@"verifiedEmail"] isKindOfClass:[NSNull class]]) ? @"": [dict objectForKey:@"verifiedEmail"],
+                                       @"identifier" : [dict objectForKey:@"identifier"],
+                                       };
+            [returnArray addObject:tempDict];
+        }
+    }
+    [JRCaptureData sharedCaptureData].linkedProfiles = profileData;
+    [returnArray release];
+}
 - (NSString *)responseType:(id)delegate {
-    if ([delegate respondsToSelector:@selector(captureDidSucceedWithCode:)]) {
+    SEL captureDidSucceedWithCode = sel_registerName("captureDidSucceedWithCode:");
+    if ([delegate respondsToSelector:captureDidSucceedWithCode]) {
         return @"code_and_token";
     }
     return @"token";

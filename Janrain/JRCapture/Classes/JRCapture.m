@@ -349,6 +349,8 @@ captureRegistrationFormName:(NSString *)captureRegistrationFormName
     }
 
     [JRCaptureData setAccessToken:accessToken];
+    NSArray *linkedProfile = [captureUserJson valueForKey:@"profiles"];
+    [JRCaptureData setLinkedProfiles:linkedProfile];
     [UIApplication sharedApplication].networkActivityIndicatorVisible = NO;
 
     JRCaptureRecordStatus recordStatus = isNew ? JRCaptureRecordNewlyCreated : JRCaptureRecordExists;
@@ -489,6 +491,51 @@ captureRegistrationFormName:(NSString *)captureRegistrationFormName
     }];
 }
 
++(void)startAccountUnLinking:(id<JRCaptureDelegate>)delegate
+        forProfileIdentifier:(NSString *)identifier {
+    
+    JRCaptureData *data = [JRCaptureData sharedCaptureData];
+    NSString *url = [NSString stringWithFormat:@"%@/entity", data.captureBaseUrl];
+    NSDictionary *params = @{
+                             @"access_token" : [data accessToken]
+                             };
+    
+    [JRConnectionManager jsonRequestToUrl:url
+                                   params:params
+                        completionHandler:^(id result, NSError *error) {
+        if (error) {
+            ALog("Failed to initiate Account Unlinking flow: %@", error);
+            [self maybeDispatch:@selector(accountUnlinkingDidFailWithError:)
+                    forDelegate:delegate
+                        withArg:error];
+            
+        } else if ([@"ok" isEqual:[result objectForKey:@"stat"]]) {
+            if(![JRCaptureUser hasPasswordField:[result valueForKey:@"result"]] &&
+               ([[JRCaptureData getLinkedProfiles] count] == 1)) {
+                [self maybeDispatch:@selector(accountUnlinkingDidFailWithError:)
+                        forDelegate:delegate
+                            withArg:[JRCaptureError
+                                     invalidInternalStateErrorWithDescription:
+                                     @"At least one profile should be must on a Social Sign-in Account."
+                                     ]];
+                return;
+            }else {
+                [JRCapture startActualAccountUnLinking:delegate
+                                  forProfileIdentifier:identifier];
+            }
+            
+        } else {
+            JRCaptureError *captureError = [JRCaptureError errorFromResult:result
+                                                                onProvider:nil
+                                                               engageToken:nil];
+            
+            [self maybeDispatch:@selector(accountUnlinkingDidFailWithError:)
+                    forDelegate:delegate
+                        withArg:captureError];
+        }
+    }];
+}
+
 + (NSString *)utcTimeString
 {
     NSDateFormatter *dateFormatter = [[[NSDateFormatter alloc] init] autorelease];
@@ -609,6 +656,8 @@ captureRegistrationFormName:(NSString *)captureRegistrationFormName
         JRCaptureUser *newUser =
             [JRCaptureUser captureUserObjectFromDictionary:[entityResponse objectForKey:@"result"]];
         [self setAccessToken:accessToken];
+        NSArray *linkedProfile = [[entityResponse objectForKey:@"result"] valueForKey:@"profiles"];
+        [JRCaptureData setLinkedProfiles:linkedProfile];
         [JRCapture maybeDispatch:successMsg forDelegate:delegate withArg:newUser];
 
         if (authorizationCode) {
@@ -619,6 +668,59 @@ captureRegistrationFormName:(NSString *)captureRegistrationFormName
 
     NSString *entityUrl = [NSString stringWithFormat:@"%@/entity", [JRCaptureData sharedCaptureData].captureBaseUrl];
     [JRConnectionManager jsonRequestToUrl:entityUrl params:@{@"access_token" : accessToken} completionHandler:handler];
+}
+
++ (void)updateProfileForUser:(JRCaptureUser *)user delegate:(id <JRCaptureDelegate>)delegate
+{
+    if (!user) {
+        [JRCapture maybeDispatch:@selector(updateUserProfileDidFailWithError:) forDelegate:delegate
+                         withArg:[JRCaptureError invalidArgumentErrorWithParameterName:@"user"]];
+    }
+
+    JRCaptureData *data = [JRCaptureData sharedCaptureData];
+    NSString *editProfileForm = data.captureEditProfileFormName;
+
+    if (!editProfileForm) {
+        [NSException raiseJRDebugException:@"JRCaptureMissingParameterException"
+                                    format:@"Missing editProfileFormName configuration option"];
+    }
+    NSMutableDictionary *params = [user toFormFieldsForForm:editProfileForm withFlow:data.captureFlow];
+
+    [params addEntriesFromDictionary:@{
+            @"client_id" : data.clientId,
+            @"access_token" : data.accessToken,
+            @"locale" : data.captureLocale,
+            @"form" : editProfileForm,
+            @"flow" : data.captureFlowName,
+    }];
+
+    if ([data downloadedFlowVersion]) {
+        [params setObject:[data downloadedFlowVersion] forKey:@"flow_version"];
+    }
+
+    NSString *urlString = [NSString stringWithFormat:@"%@/oauth/update_profile_native", data.captureBaseUrl];
+
+    void (^handler)(id, NSError *) = ^(id result, NSError *error) {
+        if (error) {
+            ALog("Failure when updating the user profile: %@", error);
+            [self maybeDispatch:@selector(updateUserProfileDidFailWithError:) forDelegate:delegate withArg:error];
+        } else if (![result isKindOfClass:[NSDictionary class]]) {
+            JRCaptureError *captureError = [JRCaptureError invalidApiResponseErrorWithObject:result];
+
+            [self maybeDispatch:@selector(updateUserProfileDidFailWithError:)
+                    forDelegate:delegate withArg:captureError];
+        } else if ([@"ok" isEqual:[result objectForKey:@"stat"]]) {
+            DLog(@"User profile successfully updated");
+            [self maybeDispatch:@selector(updateUserProfileDidSucceed) forDelegate:delegate];
+        } else {
+            JRCaptureError *captureError = [JRCaptureError errorFromResult:result onProvider:nil engageToken:nil];
+
+            [self maybeDispatch:@selector(updateUserProfileDidFailWithError:)
+                    forDelegate:delegate withArg:captureError];
+        }
+    };
+
+    [JRConnectionManager jsonRequestToUrl:urlString params:params completionHandler:handler];
 }
 
 + (void)maybeDispatch:(SEL)pSelector forDelegate:(id <JRCaptureDelegate>)delegate withArg:(id)arg1
@@ -658,4 +760,129 @@ captureRegistrationFormName:(NSString *)captureRegistrationFormName
     [JRCapture startEngageSignInDialogForDelegate:delegate];
 }
 
++(void)startAccountLinkingSignInDialogForDelegate:(id<JRCaptureDelegate>)delegate
+                                forAccountLinking:(BOOL)linkAccount
+                                  withRedirectUri:(NSString *)redirectUri
+{
+    [JREngageWrapper startAuthenticationDialogWithTraditionalSignIn:JRTraditionalSignInNone
+                                        andCustomInterfaceOverrides:nil
+                                                        forDelegate:delegate
+                                                  forAccountLinking:YES
+                                                    withRedirectUri:redirectUri];
+}
+
++ (void)startLinkNewAccountFordelegate:(id<JRCaptureDelegate>)delegate
+                           redirectUri:(NSString *)redirectUri
+                          withAuthInfo:(NSDictionary *)authInfo
+{
+    JRCaptureData *data = [JRCaptureData sharedCaptureData];
+    NSString *url = [NSString stringWithFormat:@"%@/oauth/link_account_native", data.captureBaseUrl];
+    if (!redirectUri) redirectUri = data.captureRedirectUri;
+    if (!redirectUri) {
+        JRCaptureError *captureError =
+        [JRCaptureError invalidArgumentErrorWithParameterName:@"redirectUri"];
+        [self maybeDispatch:@selector(linkNewAccountDidFailWithError:) forDelegate:delegate
+                    withArg:captureError];
+        
+        [NSException raiseJRDebugException:@"JRCaptureMissingParameterException"
+                                    format:@"Missing argument/setting redirectUri"];
+        return;
+    }
+    
+    NSDictionary *params = @{
+                             @"client_id" : data.clientId,
+                             @"locale" : data.captureLocale,
+                             @"response_type" : @"token",
+                             @"redirect_uri" : redirectUri,
+                             @"access_token" : [data accessToken],
+                             @"token" :[authInfo valueForKey:@"token"],
+                             @"flow" :data.captureFlowName,
+                             @"flow_version" :data.downloadedFlowVersion
+                             };
+    [JRConnectionManager jsonRequestToUrl:url params:params completionHandler:^(id result, NSError *error)
+     {
+         if (error) {
+             ALog("Failure initiating link account flow: %@", error);
+             [self maybeDispatch:@selector(linkNewAccountDidFailWithError:)
+                     forDelegate:delegate withArg:error];
+         } else if ([@"ok" isEqual:[result objectForKey:@"stat"]]) {
+             DLog(@"Link account Flow started successfully");
+             NSString *url = [NSString stringWithFormat:@"%@/entity", data.captureBaseUrl];
+             NSDictionary *params = @{
+                                      @"access_token" : [data accessToken]
+                                      };
+             
+             [JRConnectionManager jsonRequestToUrl:url params:params completionHandler:^(id result, NSError *error) {
+                 if (error) {
+                     ALog("Failure: Failed to fetch linked accounts after linking: %@", error);
+                     [self maybeDispatch:@selector(linkNewAccountDidFailWithError:)
+                             forDelegate:delegate withArg:error];
+                 } else if ([@"ok" isEqual:[result objectForKey:@"stat"]]) {
+                      DLog(@"Success: Fetched the linked accounts & updated Capture object successfully");
+                     [JRCaptureData setLinkedProfiles:[[result valueForKey:@"result"] valueForKey:@"profiles"]];
+                     [self maybeDispatch:@selector(linkNewAccountDidSucceed) forDelegate:delegate];
+                     
+                 } else {
+                     JRCaptureError *captureError = [JRCaptureError errorFromResult:result onProvider:nil engageToken:nil];
+                     [self maybeDispatch:@selector(linkNewAccountDidFailWithError:)
+                             forDelegate:delegate withArg:captureError];
+                 }
+             }];
+             
+         } else {
+             JRCaptureError *captureError = [JRCaptureError errorFromResult:result onProvider:nil engageToken:nil];
+             [self maybeDispatch:@selector(linkNewAccountDidFailWithError:)
+                     forDelegate:delegate withArg:captureError];
+         }
+     }];
+}
+
++ (void)startActualAccountUnLinking:(id <JRCaptureDelegate>)delegate forProfileIdentifier:(NSString *)identifier {
+    
+    JRCaptureData *data = [JRCaptureData sharedCaptureData];
+    
+    NSString *url = [NSString stringWithFormat:@"%@/oauth/unlink_account_native", data.captureBaseUrl];
+    NSDictionary *params = @{
+                             @"client_id" : data.clientId,
+                             @"locale" : data.captureLocale,
+                             @"identifier_to_remove" : identifier,
+                             @"access_token" : data.accessToken,
+                             @"flow": data.captureFlowName,
+                             @"flow_version": data.downloadedFlowVersion
+                             };
+    
+    [JRConnectionManager jsonRequestToUrl:url
+                                   params:params
+                        completionHandler:^(id result, NSError *error) {
+                            
+                            if (error) {
+                                ALog("Failed to initiate Account Unlinking flow: %@", error);
+                                [self maybeDispatch:@selector(accountUnlinkingDidFailWithError:)
+                                        forDelegate:delegate withArg:error];
+                                
+                            } else if ([@"ok" isEqual:[result objectForKey:@"stat"]]) {
+                                DLog(@"Account Unlinking flow started successfully");
+                                
+                                if( [[JRCaptureData getLinkedProfiles] count] ) {
+                                    NSMutableArray *updateProfiles = [[NSMutableArray alloc]init];
+                                    for(NSDictionary *dict in [JRCaptureData getLinkedProfiles] ) {
+                                        if(![[dict valueForKey:@"identifier"] isEqualToString:identifier]) {
+                                            [updateProfiles addObject:dict];
+                                        }
+                                    }
+                                    [JRCaptureData setLinkedProfiles:updateProfiles];
+                                }
+                                [self maybeDispatch:@selector(accountUnlinkingDidSucceed)
+                                        forDelegate:delegate];
+                            } else {
+                                JRCaptureError *captureError = [JRCaptureError errorFromResult:result
+                                                                                    onProvider:nil
+                                                                                   engageToken:nil];
+                                
+                                [self maybeDispatch:@selector(accountUnlinkingDidFailWithError:)
+                                        forDelegate:delegate
+                                            withArg:captureError];
+                            }
+                        }];
+}
 @end

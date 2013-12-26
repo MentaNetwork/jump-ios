@@ -50,7 +50,10 @@
 @property(nonatomic, readonly, retain) NSString *captureAppId;
 @property(nonatomic, readonly, retain) NSDictionary *captureFlow;
 @property(nonatomic, readonly, retain) NSString *captureForgottenPasswordFormName;
+@property(nonatomic, readonly, retain) NSString *captureEditProfileFormName;
 @property(nonatomic) BOOL flowUsesTestingCdn;
+@property(nonatomic, readonly, retain) NSArray *linkedProfiles;
+@property(nonatomic, readonly) BOOL socialSignMode;
 
 + (void)setAccessToken:(NSString *)token;
 
@@ -67,6 +70,10 @@
 + (NSString *)generateAndStoreRefreshSecret;
 
 + (NSMutableURLRequest *)requestWithPath:(NSString *)path;
+
++ (void)setLinkedProfiles:(NSArray *)profileData;
+
++ (NSArray *)getLinkedProfiles;
 
 - (NSString *)downloadedFlowVersion;
 

@@ -799,9 +799,6 @@ static JRUserInterfaceMaestro *singleton = nil;
 
 - (void)tearDownDialogPresentation
 {
-    if (usingAppNav) {
-        applicationNavigationController.navigationBar.translucent = isAppNavTranslucent;
-    }
     padPopoverMode = PadPopoverModeNone;
     usingAppNav = NO, usingCustomNav = NO;
 
@@ -905,7 +902,6 @@ static JRUserInterfaceMaestro *singleton = nil;
     UINavigationController *navigationController = [[UINavigationController alloc] initWithRootViewController:root];
     [navigationController autorelease];
     navigationController.navigationBar.barStyle = UIBarStyleBlack;
-    navigationController.navigationBar.translucent = NO;
     navigationController.navigationBar.clipsToBounds = YES;
 
     navigationController.view.autoresizingMask =
