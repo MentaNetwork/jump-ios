@@ -156,6 +156,12 @@
                                         target:sessionData
                                         action:@selector(triggerAuthenticationDidCancel:)];
         
+        UIBarButtonItem *skipButton =
+        [[UIBarButtonItem alloc] initWithTitle:@"SKIP"
+                                         style:UIBarButtonItemStylePlain
+                                        target:sessionData
+                                        action:@selector(triggerAuthenticationDidSkip:)];
+        
         // Entutele
         cancelButton.tintColor = kTLColorButton;
         [cancelButton setTitleTextAttributes:@{UITextAttributeFont:[UIFont fontWithName:@"Lato-Regular" size:12]} forState:UIControlStateNormal];
@@ -163,6 +169,10 @@
         self.navigationItem.leftBarButtonItem = cancelButton;
         self.navigationItem.leftBarButtonItem.enabled = YES;
         self.navigationItem.leftBarButtonItem.style = UIBarButtonItemStyleBordered;
+        
+        self.navigationItem.rightBarButtonItem = skipButton;
+        self.navigationItem.rightBarButtonItem.enabled = YES;
+        self.navigationItem.rightBarButtonItem.style = UIBarButtonItemStyleBordered;
 
     }
 

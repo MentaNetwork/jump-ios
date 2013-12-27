@@ -133,6 +133,8 @@
  **/
 - (void)authenticationDidNotComplete;
 
+- (void)authenticationDidSkip;
+
 /**
  * Tells the delegate that the user has successfully authenticated with the given provider, passing to
  * the delegate an \e NSDictionary object with the user's profile data.

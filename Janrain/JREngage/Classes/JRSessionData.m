@@ -1705,6 +1705,20 @@ CALL_DELEGATE_SELECTOR:
     [self triggerAuthenticationDidCancel];
 }
 
+- (void)triggerAuthenticationDidSkip:(id)sender
+{
+    DLog(@"");
+    
+    NSArray *delegatesCopy = [NSArray arrayWithArray:delegates];
+    for (id<JRSessionDelegate> delegate in delegatesCopy)
+    {
+        if ([delegate respondsToSelector:@selector(authenticationDidSkip)])
+            [delegate authenticationDidSkip];
+    }
+    
+    [currentProvider release], currentProvider = nil;
+}
+
 - (void)triggerAuthenticationDidTimeOutConfiguration
 {
     DLog (@"");

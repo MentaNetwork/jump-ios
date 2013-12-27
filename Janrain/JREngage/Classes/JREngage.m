@@ -398,6 +398,20 @@ static JREngage* singleton = nil;
     [interfaceMaestro authenticationCanceled];
 }
 
+- (void)authenticationDidSkip
+{
+    ALog (@"");
+    
+    NSArray *delegatesCopy = [NSArray arrayWithArray:delegates];
+    for (id<JREngageSigninDelegate> delegate in delegatesCopy)
+    {
+        if ([delegate respondsToSelector:@selector(authenticationDidSkip)])
+            [delegate authenticationDidSkip];
+    }
+    
+    //[interfaceMaestro authenticationCanceled];
+}
+
 - (void)authenticationDidCompleteForUser:(NSDictionary *)profile forProvider:(NSString *)provider
 {
     ALog (@"Signing complete for %@", provider);

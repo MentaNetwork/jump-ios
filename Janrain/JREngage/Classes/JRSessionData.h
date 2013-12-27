@@ -91,6 +91,8 @@
 
 - (void)authenticationDidCancel;
 
+- (void)authenticationDidSkip;
+
 - (void)authenticationDidCompleteForUser:(NSDictionary *)profile forProvider:(NSString *)provider;
 
 - (void)authenticationDidSucceedForAccountLinking:(NSDictionary *)profile forProvider:(NSString *)provider;
@@ -183,6 +185,8 @@
 - (void)triggerAuthenticationDidCancel;
 
 - (void)triggerAuthenticationDidCancel:(id)sender;
+
+- (void)triggerAuthenticationDidSkip:(id)sender;
 
 - (void)triggerAuthenticationDidTimeOutConfiguration;
 
