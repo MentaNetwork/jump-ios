@@ -170,9 +170,11 @@
         self.navigationItem.leftBarButtonItem.enabled = YES;
         self.navigationItem.leftBarButtonItem.style = UIBarButtonItemStyleBordered;
         
-        self.navigationItem.rightBarButtonItem = skipButton;
-        self.navigationItem.rightBarButtonItem.enabled = YES;
-        self.navigationItem.rightBarButtonItem.style = UIBarButtonItemStyleBordered;
+        if ([[customInterface objectForKey:@"withSkipButton"] boolValue]) {
+            self.navigationItem.rightBarButtonItem = skipButton;
+            self.navigationItem.rightBarButtonItem.enabled = YES;
+            self.navigationItem.rightBarButtonItem.style = UIBarButtonItemStyleBordered;
+        }
 
     }
 
