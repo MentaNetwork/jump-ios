@@ -75,7 +75,7 @@
     [[UIBarButtonItem alloc] initWithTitle:@"CANCEL"
                                      style:UIBarButtonItemStyleBordered
                                     target:self
-                                    action:@selector(goTheFuckBack:)];
+                                    action:@selector(cancelButtonPressed:)];
     cancelButton.tintColor = kTLColorButton;
     [cancelButton setTitleTextAttributes:@{UITextAttributeFont:[UIFont fontWithName:@"Lato-Regular" size:12]} forState:UIControlStateNormal];
     
