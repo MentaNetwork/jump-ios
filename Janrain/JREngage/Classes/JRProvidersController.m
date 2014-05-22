@@ -313,9 +313,11 @@
         UIApplication *app = [UIApplication sharedApplication];
         app.networkActivityIndicatorVisible = YES;
 
-        NSString *message = @"There are no available providers. Either there is a problem connecting or no providers "
-                "have been configured. Please try again later.";
-        UIAlertView *alert = [[[UIAlertView alloc] initWithTitle:@"No Available Providers" message:message
+        NSString *message = NSLocalizedString(@"There are no available providers. Please try again later.",
+                                              @"Alert view message - Janrain");
+        UIAlertView *alert = [[[UIAlertView alloc] initWithTitle:NSLocalizedString(@"No Available Providers",
+                                                                                   @"Alert view title - Janrain")
+                                                         message:message
                                                         delegate:self
                                                cancelButtonTitle:@"OK"
                                                otherButtonTitles:nil] autorelease];
