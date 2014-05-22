@@ -72,10 +72,10 @@
         customInterface = [theCustomInterface retain];
     }
     UIBarButtonItem *cancelButton =
-    [[UIBarButtonItem alloc] initWithTitle:@"CANCEL"
+    [[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"CANCEL", nil)
                                      style:UIBarButtonItemStyleBordered
                                     target:self
-                                    action:@selector(goTheFuckBack:)];
+                                    action:@selector(cancelButtonPressed:)];
     cancelButton.tintColor = kTLColorButton;
     [cancelButton setTitleTextAttributes:@{UITextAttributeFont:[UIFont fontWithName:@"Lato-Regular" size:12]} forState:UIControlStateNormal];
     
@@ -109,7 +109,7 @@
     [super viewWillAppear:animated];
     self.contentSizeForViewInPopover = self.view.frame.size;
 
-    self.title = (sessionData.currentProvider) ? sessionData.currentProvider.friendlyName : @"Loading";
+    self.title = (sessionData.currentProvider) ? sessionData.currentProvider.friendlyName : NSLocalizedString(@"Loading", nil);
 
     if (!infoBar)
     {

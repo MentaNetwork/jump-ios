@@ -131,7 +131,7 @@
         self.navigationItem.titleView = titleView;
     } else {
         NSString *l10n = ([customInterface objectForKey:kJRProviderTableTitleString]) ?
-            [customInterface objectForKey:kJRProviderTableTitleString] : @"Sign in with...";
+            [customInterface objectForKey:kJRProviderTableTitleString] : NSLocalizedString(@"Sign in with...", nil);
         self.navigationItem.title = NSLocalizedString(l10n, @"");
     }
 
@@ -151,13 +151,13 @@
     if (!hidesCancelButton)
     {
         UIBarButtonItem *cancelButton =
-        [[UIBarButtonItem alloc] initWithTitle:@"CANCEL"
+        [[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"CANCEL", nil)
                                          style:UIBarButtonItemStylePlain
                                         target:sessionData
                                         action:@selector(triggerAuthenticationDidCancel:)];
         
         UIBarButtonItem *skipButton =
-        [[UIBarButtonItem alloc] initWithTitle:@"SKIP"
+        [[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"SKIP", nil)
                                          style:UIBarButtonItemStylePlain
                                         target:sessionData
                                         action:@selector(triggerAuthenticationDidSkip:)];
@@ -170,9 +170,11 @@
         self.navigationItem.leftBarButtonItem.enabled = YES;
         self.navigationItem.leftBarButtonItem.style = UIBarButtonItemStyleBordered;
         
-        self.navigationItem.rightBarButtonItem = skipButton;
-        self.navigationItem.rightBarButtonItem.enabled = YES;
-        self.navigationItem.rightBarButtonItem.style = UIBarButtonItemStyleBordered;
+        if ([[customInterface objectForKey:@"withSkipButton"] boolValue]) {
+            self.navigationItem.rightBarButtonItem = skipButton;
+            self.navigationItem.rightBarButtonItem.enabled = YES;
+            self.navigationItem.rightBarButtonItem.style = UIBarButtonItemStyleBordered;
+        }
 
     }
 
