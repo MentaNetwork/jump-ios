@@ -159,6 +159,7 @@
     // Bugfix Crashalytics#12
     if (!sessionData.currentProvider.friendlyName) {
         [self backToProvidersTouchUpInside];
+        return;
     }
 
     if (titleView) {
