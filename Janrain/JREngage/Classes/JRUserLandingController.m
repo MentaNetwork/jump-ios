@@ -156,6 +156,11 @@
 
     self.title = [self customTitle];
 
+    // Bugfix Crashalytics#12
+    if (!sessionData.currentProvider.friendlyName) {
+        [self backToProvidersTouchUpInside];
+    }
+
     if (titleView) {
         titleView.text = [NSString stringWithString:sessionData.currentProvider.friendlyName];
         self.navigationItem.titleView = titleView;
