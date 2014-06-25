@@ -1059,13 +1059,15 @@ static JRUserInterfaceMaestro *singleton = nil;
     [self buildCustomInterface:customizations];
     [self setUpDialogPresentation];
     [self setUpViewControllers];
-
-    UIViewController *dialogVcToPresent;
+    
+    // Bugfix Crashalytics#12: force the providers list to show up, somehow
+    UIViewController *dialogVcToPresent = myProvidersController;
+    /* 
     if ((sessionData.currentProvider = [self directProvider]))
         dialogVcToPresent = sessionData.currentProvider.requiresInput ? myUserLandingController : myWebViewController;
     else
         dialogVcToPresent = myProvidersController;
-
+     */
     if (dialogVcToPresent == myWebViewController)
         [sessionData.currentProvider forceReauth];
 
