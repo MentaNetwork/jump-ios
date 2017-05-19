@@ -66,7 +66,6 @@
 {
     [self.dirtyPropertySet addObject:@"string1"];
 
-    [_string1 autorelease];
     _string1 = [newString1 copy];
 }
 
@@ -79,7 +78,6 @@
 {
     [self.dirtyPropertySet addObject:@"string2"];
 
-    [_string2 autorelease];
     _string2 = [newString2 copy];
 }
 
@@ -92,8 +90,7 @@
 {
     [self.dirtyPropertySet addObject:@"onipinoL3Object"];
 
-    [_onipinoL3Object autorelease];
-    _onipinoL3Object = [newOnipinoL3Object retain];
+    _onipinoL3Object = newOnipinoL3Object;
 
     [_onipinoL3Object setAllPropertiesToDirty];
 }
@@ -114,19 +111,19 @@
 
 + (id)onipinoL2PluralElement
 {
-    return [[[JROnipinoL2PluralElement alloc] init] autorelease];
+    return [[JROnipinoL2PluralElement alloc] init];
 }
 
-- (NSDictionary*)toDictionaryForEncoder:(BOOL)forEncoder
+- (NSDictionary*)newDictionaryForEncoder:(BOOL)forEncoder
 {
-    NSMutableDictionary *dictionary = 
+    NSMutableDictionary *dictionary =
         [NSMutableDictionary dictionaryWithCapacity:10];
 
     [dictionary setObject:(self.string1 ? self.string1 : [NSNull null])
                    forKey:@"string1"];
     [dictionary setObject:(self.string2 ? self.string2 : [NSNull null])
                    forKey:@"string2"];
-    [dictionary setObject:(self.onipinoL3Object ? [self.onipinoL3Object toDictionaryForEncoder:forEncoder] : [NSNull null])
+    [dictionary setObject:(self.onipinoL3Object ? [self.onipinoL3Object newDictionaryForEncoder:forEncoder] : [NSNull null])
                    forKey:@"onipinoL3Object"];
 
     if (forEncoder)
@@ -135,10 +132,10 @@
                        forKey:@"dirtyPropertiesSet"];
         [dictionary setObject:(self.captureObjectPath ? self.captureObjectPath : [NSNull null])
                        forKey:@"captureObjectPath"];
-        [dictionary setObject:[NSNumber numberWithBool:self.canBeUpdatedOnCapture] 
+        [dictionary setObject:[NSNumber numberWithBool:self.canBeUpdatedOnCapture]
                        forKey:@"canBeUpdatedOnCapture"];
     }
-    
+
     return [NSDictionary dictionaryWithDictionary:dictionary];
 }
 
@@ -159,7 +156,7 @@
     }
     else
     {
-        onipinoL2PluralElement.captureObjectPath      = [NSString stringWithFormat:@"%@/%@#%d", capturePath, @"onipinoL2Plural", [(NSNumber*)[dictionary objectForKey:@"id"] integerValue]];
+        onipinoL2PluralElement.captureObjectPath      = [NSString stringWithFormat:@"%@/%@#%ld", capturePath, @"onipinoL2Plural", (long)[(NSNumber*)[dictionary objectForKey:@"id"] integerValue]];
         onipinoL2PluralElement.canBeUpdatedOnCapture = YES;
     }
 
@@ -179,7 +176,7 @@
         [onipinoL2PluralElement.dirtyPropertySet setSet:dirtyPropertySetCopy];
     else
         [onipinoL2PluralElement.dirtyPropertySet removeAllObjects];
-    
+
     return onipinoL2PluralElement;
 }
 
@@ -192,10 +189,10 @@
 {
     DLog(@"%@ %@", capturePath, [dictionary description]);
 
-    NSSet *dirtyPropertySetCopy = [[self.dirtyPropertySet copy] autorelease];
+    NSSet *dirtyPropertySetCopy = [self.dirtyPropertySet copy];
 
     self.canBeUpdatedOnCapture = YES;
-    self.captureObjectPath = [NSString stringWithFormat:@"%@/%@#%d", capturePath, @"onipinoL2Plural", [(NSNumber*)[dictionary objectForKey:@"id"] integerValue]];
+    self.captureObjectPath = [NSString stringWithFormat:@"%@/%@#%ld", capturePath, @"onipinoL2Plural", (long)[(NSNumber*)[dictionary objectForKey:@"id"] integerValue]];
 
     self.string1 =
         [dictionary objectForKey:@"string1"] != [NSNull null] ? 
@@ -231,7 +228,7 @@
     NSMutableDictionary *snapshotDictionary =
              [NSMutableDictionary dictionaryWithCapacity:10];
 
-    [snapshotDictionary setObject:[[self.dirtyPropertySet copy] autorelease] forKey:@"onipinoL2PluralElement"];
+    [snapshotDictionary setObject:[self.dirtyPropertySet copy] forKey:@"onipinoL2PluralElement"];
 
     if (self.onipinoL3Object)
         [snapshotDictionary setObject:[self.onipinoL3Object snapshotDictionaryFromDirtyPropertySet]
@@ -328,7 +325,7 @@
 
 - (NSDictionary*)objectProperties
 {
-    NSMutableDictionary *dictionary = 
+    NSMutableDictionary *dictionary =
         [NSMutableDictionary dictionaryWithCapacity:10];
 
     [dictionary setObject:@"NSString" forKey:@"string1"];
@@ -338,12 +335,4 @@
     return [NSDictionary dictionaryWithDictionary:dictionary];
 }
 
-- (void)dealloc
-{
-    [_string1 release];
-    [_string2 release];
-    [_onipinoL3Object release];
-
-    [super dealloc];
-}
 @end

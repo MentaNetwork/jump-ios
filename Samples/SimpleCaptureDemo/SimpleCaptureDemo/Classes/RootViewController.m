@@ -33,6 +33,7 @@
 #import "RootViewController.h"
 #import "JREngage+CustomInterface.h"
 #import "CaptureProfileViewController.h"
+#import "CaptureChangePasswordViewController.h"
 #import "AlertViewWithBlocks.h"
 #import "AppDelegate.h"
 #import "CaptureDynamicForm.h"
@@ -42,31 +43,55 @@
 #import "JRActivityObject.h"
 #import "LinkedProfilesViewController.h"
 #import "JRCaptureData.h"
+@import Social;
+@import Accounts;
+@import LocalAuthentication;
+
+
 
 @interface MyCaptureDelegate : NSObject <JRCaptureDelegate, JRCaptureUserDelegate>
+
 @property RootViewController *rvc;
 
 - (id)initWithRootViewController:(RootViewController *)rvc;
+
 @end
 
 @interface RootViewController () <UIAlertViewDelegate, LinkedProfilesDelegate>
+
 @property(nonatomic, copy) void (^viewDidAppearContinuation)();
 @property(nonatomic) BOOL viewIsApparent;
+
 @property MyCaptureDelegate *captureDelegate;
 
 - (void)configureViewsWithDisableOverride:(BOOL)disableAllButtons;
+
 @end
 
 @implementation RootViewController
 
+@synthesize currentProvider;
+
+
+//Merging variables
+@synthesize activeMergeToken;
+@synthesize isMergingAccount;
+@synthesize touchIDEnabled;
+
+
 - (void)viewDidLoad
 {
     [super viewDidLoad];
-
     self.captureDelegate = [[MyCaptureDelegate alloc] initWithRootViewController:self];
+    
+    self.isMergingAccount = NO;
+    self.touchIDEnabled = NO;
 
     self.customUi = @{kJRApplicationNavigationController : self.navigationController};
     [self configureUserLabelAndIcon];
+    
+    appDelegate.currentProvider = nil;
+    [self configureProviderIcon];
 
     if ([self respondsToSelector:@selector(setEdgesForExtendedLayout:)]) {
         [self setEdgesForExtendedLayout:UIRectEdgeNone];
@@ -94,38 +119,49 @@
         self.refreshButton.hidden = NO;
         self.signInButton.hidden = YES;
         self.tradAuthButton.hidden = YES;
-        self.directFacebookAuthButton.hidden = YES;
         self.signOutButton.hidden = NO;
         self.shareButton.hidden = NO;
         self.refetchButton.hidden = NO;
         self.forgotPasswordButton.hidden = YES;
+        self.changePasswordButton.hidden = NO;
+        self.resendVerificationButton.hidden = YES;
         self.linkAccountButton.hidden = NO;
         self.unlinkAccountButton.hidden = NO;
+        self.signInNavButton.enabled = NO;
 
         self.formButton.hidden = YES;
         self.updateProfileButton.hidden = NO;
 
         self.browseButton.enabled = YES;
         self.browseButton.alpha = 1;
+        
+        self.enableTouchIDSwitch.hidden = YES;
+        self.enableTouchIDLabel.hidden = YES;
+        
     }
     else
     {
         self.refreshButton.hidden = YES;
         self.signInButton.hidden = NO;
         self.tradAuthButton.hidden = NO;
-        self.directFacebookAuthButton.hidden = NO;
         self.signOutButton.hidden = YES;
         self.shareButton.hidden = YES;
         self.refetchButton.hidden = YES;
         self.forgotPasswordButton.hidden = NO;
+        self.changePasswordButton.hidden = YES;
+        self.resendVerificationButton.hidden = NO;
         self.linkAccountButton.hidden = YES;
         self.unlinkAccountButton.hidden = YES;
+        self.signInNavButton.enabled = YES;
 
         self.updateProfileButton.hidden = YES;
         self.formButton.hidden = NO;
 
         self.browseButton.enabled = NO;
         self.browseButton.alpha = 0.5;
+        
+        self.enableTouchIDSwitch.hidden = NO;
+        self.enableTouchIDLabel.hidden = NO;
     }
 
     if (disableAllButtons)
@@ -136,14 +172,8 @@
 
 - (void)setAllButtonsEnabled:(BOOL)b
 {
-    self.refreshButton.enabled = self.signInButton.enabled = self.browseButton.enabled =
-                self.signOutButton.enabled = self.formButton.enabled = self.refetchButton.enabled =
-                        self.shareButton.enabled = self.directFacebookAuthButton.enabled = self.tradAuthButton.enabled
-                                = b;
-    self.refreshButton.alpha = self.signInButton.alpha = self.browseButton.alpha = self.signOutButton.alpha =
-                self.formButton.alpha = self.refetchButton.alpha = self.shareButton.alpha =
-                self.directFacebookAuthButton.alpha = self.forgotPasswordButton.alpha =
-                self.tradAuthButton.alpha = 0.5 + b * 0.5;
+    self.refreshButton.enabled = self.signInButton.enabled = self.browseButton.enabled = self.signOutButton.enabled = self.formButton.enabled = self.refetchButton.enabled = self.shareButton.enabled = self.changePasswordButton.enabled = self.tradAuthButton.enabled = self.signInNavButton.enabled = self.enableTouchIDSwitch.enabled = self.enableTouchIDLabel.enabled = b;
+    self.refreshButton.alpha = self.signInButton.alpha = self.browseButton.alpha = self.signOutButton.alpha = self.formButton.alpha = self.refetchButton.alpha = self.shareButton.alpha = self.changePasswordButton.alpha = self.resendVerificationButton.alpha = self.tradAuthButton.alpha = self.enableTouchIDSwitch.alpha = self.enableTouchIDLabel.alpha = 0.5 + b * 0.5;
 }
 
 - (void)viewDidAppear:(BOOL)animated
@@ -167,7 +197,7 @@
 
 - (IBAction)browseButtonPressed:(id)sender
 {
-    DLog(@"Capture user record: %@", [appDelegate.captureUser toDictionaryForEncoder:NO]);
+    DLog(@"Capture user record: %@", [appDelegate.captureUser newDictionaryForEncoder:NO]);
 }
 
 - (IBAction)tradRegButtonPressed:(id)sender
@@ -200,11 +230,6 @@
     [self startSignInForProvider:nil];
 }
 
-- (IBAction)facebookAuthButtonPressed:(id)sender
-{
-    [self startSignInForProvider:@"facebook"];
-    //[JRCapture startEngageSignInDialogOnProvider:@"facebook" forDelegate:self.captureDelegate];
-}
 
 -(IBAction)linkAccountButtonPressed:(id)sender
 {
@@ -224,6 +249,103 @@
                               otherButtonTitles:@"Continue", Nil] show];
 }
 
+- (IBAction)touchIDSwitchChanged:(id)sender {
+    self.touchIDEnabled = self.enableTouchIDSwitch.isOn;
+}
+
+- (void)verifyTouchId:(JRCaptureUser *)newCaptureUser status:(JRCaptureRecordStatus)captureRecordStatus {
+    DLog(@"");
+    LAContext *myContext = [[LAContext alloc] init];
+    myContext.localizedFallbackTitle = @"";
+    NSError *authError = nil;
+    NSString *myLocalizedReasonString =  @"Touch ID verification is required for access";
+    
+    if ([myContext canEvaluatePolicy:LAPolicyDeviceOwnerAuthenticationWithBiometrics error:&authError]) {
+        [myContext evaluatePolicy:LAPolicyDeviceOwnerAuthenticationWithBiometrics
+                  localizedReason:myLocalizedReasonString
+                            reply:^(BOOL success, NSError *error) {
+                                if (success) {
+                                    dispatch_async(dispatch_get_main_queue(), ^{
+                                        [self captureSignInCompletion:newCaptureUser status:captureRecordStatus];
+                                    });
+                                } else {
+                                    dispatch_async(dispatch_get_main_queue(), ^{
+                                        NSString *errorMessage;
+                                        
+                                        switch (error.code) {
+                                            case LAErrorAuthenticationFailed:
+                                                errorMessage = @"Authentication Failed";
+                                                break;
+                                                
+                                            case LAErrorUserCancel:
+                                                errorMessage = @"User pressed Cancel button";
+                                                break;
+                                            
+                                            //Button should be hidden and never seen.
+                                            case LAErrorUserFallback:
+                                                errorMessage = @"User pressed \"Enter Password\"";
+                                                break;
+                                                
+                                            default:
+                                                errorMessage = @"Touch ID is not configured";
+                                                break;
+                                        }
+                                        DLog(@"Authentication Fails");
+                                        DLog(@"%@", error.description);
+                                        
+                                        appDelegate.currentProvider = nil;
+                                        [self configureProviderIcon];
+                                        
+                                        UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:@"Error"
+                                                                                            message:errorMessage
+                                                                                           delegate:self
+                                                                                  cancelButtonTitle:@"OK"
+                                                                                  otherButtonTitles:nil, nil];
+                                        [alertView show];
+
+                                        
+                                    });
+                                }
+                            }];
+    } else {
+        void (^completion)(UIAlertView *, BOOL, NSInteger) =
+        ^(UIAlertView *alertView, BOOL cancelled, NSInteger buttonIndex) {
+            [self captureSignInCompletion:newCaptureUser status:captureRecordStatus];
+        };
+        [[[AlertViewWithBlocks alloc] initWithTitle:@"Touch ID Error"
+                                            message:@"A Touch ID error occured or it is not available. Authentication will continue for demonstration purposes."
+                                         completion:completion
+                                              style:UIAlertViewStyleDefault
+                                  cancelButtonTitle:@"OK"
+                                  otherButtonTitles:Nil, Nil] show];
+    }
+    
+}
+
+- (void)captureSignInCompletion:(JRCaptureUser *)newCaptureUser status:(JRCaptureRecordStatus)captureRecordStatus {
+    DLog(@"");
+    
+    appDelegate.captureUser = newCaptureUser;
+    [appDelegate.prefs setObject:[NSKeyedArchiver archivedDataWithRootObject:appDelegate.captureUser]
+                          forKey:cJRCaptureUser];
+    
+    [self configureViewsWithDisableOverride:NO ];
+    [self configureUserLabelAndIcon];
+    
+    if (captureRecordStatus == JRCaptureRecordNewlyCreated)
+    {
+        [RootViewController showProfileForm:self.navigationController];
+    }
+}
+
+- (IBAction)signInNavButtonPressed:(id)sender {
+    [self signOutCurrentUser];
+
+    self.customUi = @{kJRApplicationNavigationController : self.navigationController, kJRPopoverPresentationBarButtonItem : self.signInNavButton};
+
+    [self startSignInForProvider:nil];
+}
+
 - (void)startSignInForProvider:(NSString *)provider
 {
     self.currentUserProviderIcon.image = nil;
@@ -239,10 +361,9 @@
     {
         [JRCapture startEngageSignInDialogWithTraditionalSignIn:JRTraditionalSignInEmailPassword
                                     andCustomInterfaceOverrides:self.customUi forDelegate:self.captureDelegate];
-        //[JRCapture startEngageSignInDialogWithTraditionalSignIn:JRTraditionalSignInEmailPassword
-        //                            andCustomInterfaceOverrides:nil forDelegate:self.captureDelegate];
     }
 }
+
 
 - (IBAction)tradAuthButtonPressed:(id)sender
 {
@@ -255,7 +376,9 @@
     self.currentUserProviderIcon.image = nil;
     [self signOutCurrentUser];
     [self configureViewsWithDisableOverride:NO];
+    
 }
+
 
 - (IBAction)shareButtonPressed:(id)sender
 {
@@ -271,7 +394,7 @@
             ^(UIAlertView *alertView, BOOL cancelled, NSInteger buttonIndex) {
                 if (buttonIndex != alertView.cancelButtonIndex) {
                     NSString *emailAddress = [alertView textFieldAtIndex:0].text;
-                    [JRCapture startForgottenPasswordRecoveryForField:emailAddress recoverUri:nil
+                    [JRCapture startForgottenPasswordRecoveryForField:emailAddress
                                                              delegate:self.captureDelegate];
                 }
             };
@@ -283,6 +406,19 @@
                               cancelButtonTitle:@"Cancel" otherButtonTitles:@"Send", nil] show];
 }
 
+- (IBAction)changePasswordButtonPressed:(id)sender
+{
+    if(!appDelegate.captureUser.password){
+        [[[UIAlertView alloc] initWithTitle:@"Error"
+                                    message:@"This user account is social only"
+                                   delegate:nil
+                          cancelButtonTitle:@"Dismiss"
+                          otherButtonTitles:nil] show];
+    }else{
+        [self performSegueWithIdentifier:@"ChangePasswordSegue" sender:self];
+    }
+}
+
 -(void)unlinkAccountButtonPressed:(id)sender {
     void (^completion)(UIAlertView *, BOOL, NSInteger) =
     ^(UIAlertView *alertView, BOOL cancelled, NSInteger buttonIndex) {
@@ -290,15 +426,31 @@
             LinkedProfilesViewController *linkedProfilesController = [[LinkedProfilesViewController alloc]init];
             linkedProfilesController.delegate = self;
             linkedProfilesController.linkedProfiles = [JRCaptureData getLinkedProfiles];
-            [self.navigationController presentModalViewController:linkedProfilesController animated:YES];
+            [self.navigationController presentViewController:linkedProfilesController animated:YES completion:nil];
         }
     };
-    
+
     [[[AlertViewWithBlocks alloc] initWithTitle:@"Unlink Account"
                                         message:@"You are going to start account unlinking process."
                                      completion:completion
                                           style:UIAlertViewStyleDefault
                               cancelButtonTitle:@"Cancel" otherButtonTitles:@"Proceed", nil] show];
+}
+
+- (IBAction)resendVerificationButtonPressed:(id)sender {
+    void (^completion)(UIAlertView *, BOOL, NSInteger) =
+            ^(UIAlertView *alertView, BOOL cancelled, NSInteger buttonIndex) {
+                if (buttonIndex != alertView.cancelButtonIndex) {
+                    NSString *emailAddress = [alertView textFieldAtIndex:0].text;
+                    [JRCapture resendVerificationEmail:emailAddress delegate:self.captureDelegate];
+                }
+            };
+
+    [[[AlertViewWithBlocks alloc] initWithTitle:@"Please confirm your email"
+                                        message:@"We'll resend your verification email."
+                                     completion:completion
+                                          style:UIAlertViewStylePlainTextInput
+                              cancelButtonTitle:@"Cancel" otherButtonTitles:@"Send", nil] show];
 }
 
 -(void)unlinkSelectedProfile:(NSString *)selectedProfile {
@@ -328,9 +480,17 @@
 - (void)engageSignInDidFailWithError:(NSError *)error
 {
     DLog(@"error: %@", [error description]);
-    UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:@"Error" message:[error description]
+    UIAlertView *alertView;
+    if([error code]== 200){
+        alertView = [[UIAlertView alloc] initWithTitle:@"Error" message:@"User cancelled authentication"
+                                              delegate:nil cancelButtonTitle:@"Dismiss"
+                                     otherButtonTitles:nil];
+    }else{
+        //Some non-typical error occurred.  This may not be something to display to an end user.
+        alertView = [[UIAlertView alloc] initWithTitle:@"Error" message:[error description]
                                                        delegate:nil cancelButtonTitle:@"Dismiss"
                                               otherButtonTitles:nil];
+    }
     [alertView show];
 }
 
@@ -349,19 +509,18 @@
 
 - (void)handleMergeFlowError:(NSError *)error
 {
+    
     NSString *existingAccountProvider = [error JRMergeFlowExistingProvider];
     void (^mergeAlertCompletion)(UIAlertView *, BOOL, NSInteger) =
             ^(UIAlertView *alertView, BOOL cancelled, NSInteger buttonIndex)
             {
                 if (cancelled) return;
 
-                if ([existingAccountProvider isEqualToString:@"capture"]) // Traditional sign-in required
-                {
+                if ([existingAccountProvider isEqualToString:@"capture"]){ // Traditional sign-in required
                     [self performTradAuthWithMergeToken:[error JRMergeToken]];
-                }
-                else
-                {
+                }else{
                     // Social sign-in required:
+                
                     [JRCapture startEngageSignInDialogOnProvider:existingAccountProvider
                                     withCustomInterfaceOverrides:self.customUi
                                                       mergeToken:[error JRMergeToken]
@@ -446,6 +605,7 @@
     [JRCapture clearSignInState];
 }
 
+
 - (void)setProviderAndConfigureIcon:(NSString *)provider
 {
     appDelegate.currentProvider = provider;
@@ -461,15 +621,16 @@
     [controller pushViewController:viewController animated:YES];
 }
 
+
 - (void)viewDidUnload {
     [self setTradAuthButton:nil];
-    [self setDirectFacebookAuthButton:nil];
     [self setRefetchButton:nil];
     [super viewDidUnload];
 }
 @end
 
 @implementation MyCaptureDelegate
+
 
 - (id)initWithRootViewController:(RootViewController *)rvc
 {
@@ -478,7 +639,7 @@
     {
         self.rvc = rvc;
     }
-
+    
     return self;
 }
 
@@ -535,7 +696,7 @@
             [self.rvc configureViewsWithDisableOverride:NO];
         };
 
-        [[[AlertViewWithBlocks alloc] initWithTitle:@"Error" message:[error description]
+        [[[AlertViewWithBlocks alloc] initWithTitle:@"Error" message:[error localizedFailureReason]
                                          completion:t
                                               style:UIAlertViewStyleDefault
                                   cancelButtonTitle:@"Dismiss"
@@ -557,19 +718,15 @@
 {
     DLog(@"");
     [UIApplication sharedApplication].networkActivityIndicatorVisible = NO;
-
-    appDelegate.captureUser = newCaptureUser;
-    [appDelegate.prefs setObject:[NSKeyedArchiver archivedDataWithRootObject:appDelegate.captureUser]
-                          forKey:cJRCaptureUser];
-
-    [self.rvc configureViewsWithDisableOverride:NO ];
-    [self.rvc configureUserLabelAndIcon];
-
-    if (captureRecordStatus == JRCaptureRecordNewlyCreated)
-    {
-        [RootViewController showProfileForm:self.rvc.navigationController];
+    
+    if (self.rvc.touchIDEnabled){
+        [self.rvc verifyTouchId:newCaptureUser status:captureRecordStatus];
+    }else{
+        [self.rvc captureSignInCompletion:newCaptureUser status:captureRecordStatus];
     }
 }
+
+
 
 - (void)forgottenPasswordRecoveryDidSucceed {
     UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:@"Reset Password email Sent" message:@"" delegate:nil
@@ -580,8 +737,20 @@
 - (void)forgottenPasswordRecoveryDidFailWithError:(NSError *)error
 {
     [[[UIAlertView alloc] initWithTitle:@"Forgotten Password Flow Failed"
-                                        message:[NSString stringWithFormat:@"%@", error] delegate:nil
+                                        message:[error localizedFailureReason] delegate:nil
                               cancelButtonTitle:@"Ok" otherButtonTitles:nil] show];
+}
+
+- (void)resendVerificationEmailDidSucceed {
+    UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:@"Verification email Sent" message:@"" delegate:nil
+                                              cancelButtonTitle:@"Dismiss" otherButtonTitles:nil];
+    [alertView show];
+}
+
+- (void)resendVerificationEmailDidFailWithError:(NSError *)error {
+    [[[UIAlertView alloc] initWithTitle:@"Failed to resend verification email"
+                                message:[error localizedFailureReason] delegate:nil
+                      cancelButtonTitle:@"Ok" otherButtonTitles:nil] show];
 }
 
 - (void)captureDidSucceedWithCode:(NSString *)code
@@ -591,7 +760,7 @@
 
 - (void)refreshAccessTokenDidFailWithError:(NSError *)error context:(id <NSObject>)context
 {
-    UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:@"Error" message:[error description]
+    UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:@"Error" message:[error localizedFailureReason]
                                                        delegate:nil cancelButtonTitle:@"Dismiss"
                                               otherButtonTitles:nil];
     [alertView show];
@@ -613,7 +782,7 @@
 - (void)linkNewAccountDidSucceed
 {
     [UIApplication sharedApplication].networkActivityIndicatorVisible = NO;
-    
+
     UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:@"New Account Linked Successfully."
                                                         message:@"Account Linked Successfully"
                                                        delegate:nil
@@ -633,17 +802,17 @@
 - (void)linkNewAccountDidFailWithError:(NSError *)error
 {
     [UIApplication sharedApplication].networkActivityIndicatorVisible = NO;
-    
-    UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:@"Failed to link new account." message:error.localizedFailureReason delegate:nil
+
+    UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:@"Failed to link new account." message:[error localizedFailureReason] delegate:nil
                                               cancelButtonTitle:@"Dismiss" otherButtonTitles:nil];
     [alertView show];
-    
+
 }
 
 - (void)accountUnlinkingDidFailWithError:(NSError *)error
 {
     [[[UIAlertView alloc] initWithTitle:@"Account unlinking Failure"
-                                message:[NSString stringWithFormat:@"%@", error] delegate:nil
+                                message:[error localizedFailureReason] delegate:nil
                       cancelButtonTitle:@"Ok" otherButtonTitles:nil] show];
 }
 

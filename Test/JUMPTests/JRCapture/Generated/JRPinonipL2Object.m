@@ -66,7 +66,7 @@
     NSMutableArray *filteredDictionaryArray = [NSMutableArray arrayWithCapacity:[self count]];
     for (NSObject *object in self)
         if ([object isKindOfClass:[JRPinonipL3PluralElement class]])
-            [filteredDictionaryArray addObject:[(JRPinonipL3PluralElement*)object toDictionaryForEncoder:forEncoder]];
+            [filteredDictionaryArray addObject:[(JRPinonipL3PluralElement*)object newDictionaryForEncoder:forEncoder]];
 
     return filteredDictionaryArray;
 }
@@ -126,7 +126,6 @@
 {
     [self.dirtyPropertySet addObject:@"string1"];
 
-    [_string1 autorelease];
     _string1 = [newString1 copy];
 }
 
@@ -139,7 +138,6 @@
 {
     [self.dirtyPropertySet addObject:@"string2"];
 
-    [_string2 autorelease];
     _string2 = [newString2 copy];
 }
 
@@ -150,7 +148,6 @@
 
 - (void)setPinonipL3Plural:(NSArray *)newPinonipL3Plural
 {
-    [_pinonipL3Plural autorelease];
     _pinonipL3Plural = [newPinonipL3Plural copy];
 }
 
@@ -169,12 +166,12 @@
 
 + (id)pinonipL2Object
 {
-    return [[[JRPinonipL2Object alloc] init] autorelease];
+    return [[JRPinonipL2Object alloc] init];
 }
 
-- (NSDictionary*)toDictionaryForEncoder:(BOOL)forEncoder
+- (NSDictionary*)newDictionaryForEncoder:(BOOL)forEncoder
 {
-    NSMutableDictionary *dictionary = 
+    NSMutableDictionary *dictionary =
         [NSMutableDictionary dictionaryWithCapacity:10];
 
     [dictionary setObject:(self.string1 ? self.string1 : [NSNull null])
@@ -190,10 +187,10 @@
                        forKey:@"dirtyPropertiesSet"];
         [dictionary setObject:(self.captureObjectPath ? self.captureObjectPath : [NSNull null])
                        forKey:@"captureObjectPath"];
-        [dictionary setObject:[NSNumber numberWithBool:self.canBeUpdatedOnCapture] 
+        [dictionary setObject:[NSNumber numberWithBool:self.canBeUpdatedOnCapture]
                        forKey:@"canBeUpdatedOnCapture"];
     }
-    
+
     return [NSDictionary dictionaryWithDictionary:dictionary];
 }
 
@@ -234,7 +231,7 @@
         [pinonipL2Object.dirtyPropertySet setSet:dirtyPropertySetCopy];
     else
         [pinonipL2Object.dirtyPropertySet removeAllObjects];
-    
+
     return pinonipL2Object;
 }
 
@@ -247,7 +244,7 @@
 {
     DLog(@"%@ %@", capturePath, [dictionary description]);
 
-    NSSet *dirtyPropertySetCopy = [[self.dirtyPropertySet copy] autorelease];
+    NSSet *dirtyPropertySetCopy = [self.dirtyPropertySet copy];
 
     self.canBeUpdatedOnCapture = YES;
     self.captureObjectPath = [NSString stringWithFormat:@"%@/%@", capturePath, @"pinonipL2Object"];
@@ -283,7 +280,7 @@
     NSMutableDictionary *snapshotDictionary =
              [NSMutableDictionary dictionaryWithCapacity:10];
 
-    [snapshotDictionary setObject:[[self.dirtyPropertySet copy] autorelease] forKey:@"pinonipL2Object"];
+    [snapshotDictionary setObject:[self.dirtyPropertySet copy] forKey:@"pinonipL2Object"];
 
     return [NSDictionary dictionaryWithDictionary:snapshotDictionary];
 }
@@ -366,7 +363,7 @@
 
 - (NSDictionary*)objectProperties
 {
-    NSMutableDictionary *dictionary = 
+    NSMutableDictionary *dictionary =
         [NSMutableDictionary dictionaryWithCapacity:10];
 
     [dictionary setObject:@"NSString" forKey:@"string1"];
@@ -376,12 +373,4 @@
     return [NSDictionary dictionaryWithDictionary:dictionary];
 }
 
-- (void)dealloc
-{
-    [_string1 release];
-    [_string2 release];
-    [_pinonipL3Plural release];
-
-    [super dealloc];
-}
 @end

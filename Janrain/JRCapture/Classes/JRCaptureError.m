@@ -182,20 +182,23 @@ static NSString *const ENGAGE_TOKEN_KEY = @"merge_token";
                                                    description, NSLocalizedFailureReasonErrorKey, nil];
 
     [userInfo addEntriesFromDictionary:extraFields];
-    return [[[JRCaptureError alloc] initWithDomain:kJRCaptureErrorDomain code:code userInfo:userInfo] autorelease];
+    return [[JRCaptureError alloc] initWithDomain:kJRCaptureErrorDomain code:code userInfo:userInfo];
 }
 
 + (JRCaptureError *)errorFromResult:(NSDictionary *)result onProvider:(NSString *)onProvider
                         engageToken:(NSString *)mergeToken
 {
     NSString *errorDescription = [result objectForKey:@"error_description"];
+    NSString *errorMessage = [result objectForKey:@"message"];
     NSString *errorString = [result objectForKey:@"error"];
     NSNumber *code = [result objectForKey:@"code"];
     NSString *rawResponse = [result objectForKey:@"raw_response"];
-    NSMutableDictionary *extraFields = [[@{} mutableCopy] autorelease];
+    NSMutableDictionary *extraFields = [@{} mutableCopy];
     if (onProvider) [extraFields setObject:onProvider forKey:@"provider"];
     if (mergeToken) [extraFields setObject:mergeToken forKey:ENGAGE_TOKEN_KEY];
     if (rawResponse) [extraFields setObject:rawResponse forKey:@"raw_response"];
+    
+    if(errorMessage.length > 0) errorDescription = errorMessage;
 
     if (between([code integerValue], GENERIC_ERROR_RANGE, LOCAL_APID_ERROR_RANGE))
         return [self errorWithErrorString:errorString code:[code integerValue] description:errorDescription
@@ -248,6 +251,7 @@ static NSString *const ENGAGE_TOKEN_KEY = @"merge_token";
             break;
 
         case 390:
+        case 212:
             [self maybeCopyEntry:@"invalid_fields" from:result to:extraFields];
             break;
 

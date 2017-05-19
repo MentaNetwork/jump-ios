@@ -28,6 +28,7 @@
  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#import <UIKit/UIKit.h>
 #import <Foundation/Foundation.h>
 
 /**
@@ -71,6 +72,8 @@ typedef enum
     JRAuthenticationTokenUrlFailedError, /**< Token URL failed error */
     JRAuthenticationCanceledError,       /**< Authentication canceled */
     JRAuthenticationNativeAuthError,     /**< Native authentication error */
+    JRAuthenticationShouldTryWebViewError, /**< Native auth failed, but we should attempt UIWebView authentication */
+    JRAuthenticationNoAccessToTwitterAccountsError /**< Native auth failed, no access to twitter accounts*/
     // TODO: Add the token url error where appropriate
 } JREngageAuthenticationError;
 
@@ -105,7 +108,7 @@ typedef enum
     JRPublishErrorLinkedInCharacterExceeded, /* Will be deprecating */
 } JREngageSocialPublishingError;
 
-extern NSString * JREngageErrorDomain;
+FOUNDATION_EXPORT NSString * JREngageErrorDomain;
 
 @interface JREngageError : NSObject
 + (NSError *)errorWithMessage:(NSString *)message andCode:(NSInteger)code;

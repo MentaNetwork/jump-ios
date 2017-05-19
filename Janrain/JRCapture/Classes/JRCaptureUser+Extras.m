@@ -35,6 +35,7 @@
 #import "JRCaptureUser+Extras.h"
 #import "JRCaptureError.h"
 #import "JRCaptureObject+Internal.h"
+#import "JRCaptureFlow.h"
 
 @interface JRCaptureUserApidHandler : NSObject <JRCaptureInternalDelegate>
 @end
@@ -42,7 +43,7 @@
 @implementation JRCaptureUserApidHandler
 + (id)captureUserApidHandler
 {
-    return [[[JRCaptureUserApidHandler alloc] init] autorelease];
+    return [[JRCaptureUserApidHandler alloc] init];
 }
 
 - (void)getCaptureUserDidFailWithResult:(NSDictionary *)result context:(NSObject *)context
@@ -128,7 +129,7 @@
 @end
 
 @implementation JRCaptureUser (JRCaptureUser_Internal_Extras)
-- (NSMutableDictionary *)toFormFieldsForForm:(NSString *)formName withFlow:(NSDictionary *)flow
+- (NSMutableDictionary *)toFormFieldsForForm:(NSString *)formName withFlow:(JRCaptureFlow *)flow
 {
     if (!formName || !flow) return nil;
 
@@ -142,7 +143,12 @@
             ALog(@"unrecognized field defn: %@", [field description]);
             continue;
         }
-
+        
+        if([(NSDictionary *) field objectForKey:@"schemaId"] == nil) {
+            ALog(@"field defn missing schemaId (skipping): %@", [field description]);
+            continue;
+        }
+        
         id schemaId = [(NSDictionary *) field objectForKey:@"schemaId"];
         NSString *key = [fieldNames objectAtIndex:[fields indexOfObject:field]];
 
@@ -165,14 +171,10 @@
 }
 
 +(BOOL)hasPasswordField:(NSDictionary *)dict {
-    
-    NSString *component = [[[[[JRCaptureData sharedCaptureData] captureFlow]
-                             valueForKey:@"schema_info"]
-                            valueForKey:@"paths"]
-                           valueForKey:@"password"];
+    NSString *component = [[[JRCaptureData sharedCaptureData] captureFlow] schemaIdForFieldName:@"password"];
     NSArray *pathComponents = [component componentsSeparatedByString:@"."];
     NSString *passwordValue =  [JRCaptureUser valueForAttrByDotPathComponents:pathComponents userDict:dict];
-    
+
     return (passwordValue && [passwordValue length]);
 }
 - (void)setForValueFromDotPath:(NSString *)dotPath forKey:(NSString *)key dictionary:(NSMutableDictionary *)dictionary
@@ -204,7 +206,7 @@
 - (NSString *)valueForAttrByDotPath:(NSString *)dotPath
 {
     NSArray *pathComponents = [dotPath componentsSeparatedByString:@"."];
-    return [JRCaptureUser valueForAttrByDotPathComponents:pathComponents userDict:[self toDictionaryForEncoder:NO]];
+    return [JRCaptureUser valueForAttrByDotPathComponents:pathComponents userDict:[self newDictionaryForEncoder:NO]];
 }
 
 + (NSString *)valueForAttrByDotPathComponents:(NSArray *)dotPathComponents userDict:(id)userDict
@@ -239,13 +241,13 @@
 
 + (NSString *)jsonStringForValue:(id)userDict
 {
-    if (userDict == [NSNull null]) return nil;
+    if (!userDict || userDict == [NSNull null]) return nil;
     // This hack will get us the string-ified version of a JSON-able value.
     NSError *ignore = nil;
     NSArray *thisIsAHack = [NSArray arrayWithObject:userDict];
     NSData *jsonData = [NSJSONSerialization dataWithJSONObject:thisIsAHack options:(NSJSONWritingOptions) 0
                                                              error:&ignore];
-    NSString *jsonString = [[[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding] autorelease];
+    NSString *jsonString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
     if ([jsonString characterAtIndex:1] == '"')
         {
             return [jsonString substringWithRange:NSMakeRange(2, [jsonString length] - 4)];
@@ -256,7 +258,7 @@
         }
 }
 
-+ (JRCaptureUser *)captureUserObjectWithPrefilledFields:(NSDictionary *)prefilledFields flow:(NSDictionary *)flow
++ (JRCaptureUser *)captureUserObjectWithPrefilledFields:(NSDictionary *)prefilledFields flow:(JRCaptureFlow *)flow
 {
     NSMutableDictionary *preregAttributes = [NSMutableDictionary dictionary];
     for (id key in prefilledFields)
@@ -272,7 +274,7 @@
     return [JRCaptureUser captureUserObjectFromDictionary:preregAttributes];
 }
 
-+ (NSDictionary *)fieldDictForFieldName:(NSString *)fieldName flow:(NSDictionary *)flow
++ (NSDictionary *)fieldDictForFieldName:(NSString *)fieldName flow:(JRCaptureFlow *)flow
 {
     NSDictionary *fields = [flow objectForKey:@"fields"];
     for (id key in fields)

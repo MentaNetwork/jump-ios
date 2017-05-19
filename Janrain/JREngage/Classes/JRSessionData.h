@@ -33,6 +33,7 @@
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
 
 #ifdef CORDOVA_FRAMEWORK
 #import <Cordova/JSONKit.h>
@@ -70,14 +71,14 @@
 @property(nonatomic, readonly) NSString *placeholderText;
 @property(nonatomic, readonly) BOOL requiresInput;
 @property(nonatomic) BOOL forceReauthStartUrlFlag;
-@property(nonatomic, retain) NSString *userInput;
+@property(nonatomic) NSString *userInput;
 @property(nonatomic, readonly) NSDictionary *socialSharingProperties;
 @property(nonatomic, readonly) NSArray *cookieDomains;
-@property(nonatomic, retain) NSString *customUserAgentString;
+@property(nonatomic) NSString *customUserAgentString;
 @property(nonatomic) BOOL usesPhoneUserAgentString;
-@property(nonatomic, retain) NSString *samlName;
+@property(nonatomic) NSString *samlName;
 
-@property(nonatomic, retain) NSString *opxBlob; // already URL encoded
+@property(nonatomic) NSString *opxBlob; // already URL encoded
 
 - (BOOL)isEqualToReturningProvider:(NSString *)returningProvider;
 - (void)clearCookiesOnCookieDomains;
@@ -121,7 +122,7 @@
 @class JRActivityObject;
 
 @interface JRSessionData : NSObject <JRConnectionManagerDelegate>
-@property(retain) JRProvider *currentProvider;
+@property JRProvider *currentProvider;
 @property(readonly) NSString *returningAuthenticationProvider;
 @property(readonly) NSString *returningSharingProvider;
 
@@ -129,9 +130,9 @@
     provider. authenticationProviders and sharingProviders are arrays of NSStrings, each string being the primary key
     in engageProviders for that provider, representing the list of providers to be used in authentication and social
     publishing. The arrays are in the order configured by the RP on http://rpxnow.com. */
-@property(readonly, retain) NSMutableDictionary *engageProviders;
-@property(readonly, retain) NSArray *authenticationProviders;
-@property(readonly, retain) NSArray *sharingProviders;
+@property(readonly) NSMutableDictionary *engageProviders;
+@property(readonly) NSArray *authenticationProviders;
+@property(readonly) NSArray *sharingProviders;
 
 @property(copy) JRActivityObject *activity;
 
@@ -142,16 +143,29 @@
 @property BOOL alwaysForceReauth;
 @property BOOL socialSharing;
 @property BOOL authenticationFlowIsInFlight;
+@property BOOL nativeAuthenticationFlowIsInFlight;
+@property BOOL openIDAppAuthAuthenticationFlowIsInFlight;
 @property BOOL accountLinking;
-@property(retain, readonly) NSError *error;
+@property(readonly) NSError *error;
 
 + (JRSessionData *)jrSessionData;
 
++ (JRSessionData *)jrSessionDataWithAppId:(NSString *)newAppId appUrl:(NSString *)newAppUrl
+                                 tokenUrl:(NSString *)newTokenUrl
+                              andDelegate:(id <JRSessionDelegate>)newDelegate;
+/**
+ * @deprecated
+ **/
 + (JRSessionData *)jrSessionDataWithAppId:(NSString *)newAppId tokenUrl:(NSString *)newTokenUrl
                  andDelegate:(id <JRSessionDelegate>)newDelegate;
 
 - (void)tryToReconfigureLibrary;
 
+- (id)reconfigureWithAppId:(NSString *)newAppId appUrl:(NSString *)newAppUrl
+                  tokenUrl:(NSString *)newTokenUrl;
+/**
+ * @deprecated
+ **/
 - (id)reconfigureWithAppId:(NSString *)newAppId tokenUrl:(NSString *)newTokenUrl;
 
 - (void)addDelegate:(id <JRSessionDelegate>)delegateToAdd;

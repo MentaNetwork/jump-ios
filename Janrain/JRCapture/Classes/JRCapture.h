@@ -54,10 +54,22 @@
 #define startEngageSigninDialogOnProvider startEngageSignInDialogOnProvider
 #define startCaptureConventionalSigninForUser startCaptureTraditionalSignInForUser
 #define startEngageSignInDialogWithConventionalSignIn startEngageSignInDialogWithTraditionalSignIn
-#define startEngageSigninDialogWithConventionalSignin startEngageSignInDialogWithTraditionalSignIn
+//#define startEngageSigninDialogWithConventionalSignin startEngageSignInDialogWithTraditionalSignIn
 #define withSigninType withSignInType
 
-#define startCaptureConventionalSignInForUser startCaptureTraditionalSignInForUser
+//#define startCaptureConventionalSignInForUser startCaptureTraditionalSignInForUser
+
+/**
+ *  NSNotifications
+ */
+
+/** Posted via a NSNotificationQueue when a download flow completes.
+ *  Name:    "JRDownloadFlowResult"
+ *  object:  JRCaptureError
+ *  if the object is nil, the FLOW was successfully downloaded.
+ *  If the JRCaptureError object is !nil, then the FLOW did not download.
+ */
+FOUNDATION_EXPORT NSString* const JRDownloadFlowResult;
 
 /**
  * @mainpage Janrain Capture for iOS
@@ -338,6 +350,18 @@
 - (void)forgottenPasswordRecoveryDidFailWithError:(NSError *)error;
 
 /**
+ * Sent when resending the email validation email succeeds
+ */
+- (void)resendVerificationEmailDidSucceed;
+
+/**
+ * Sent when resending the email validation email fails
+ * @param error
+ *    The error that caused the failure.
+ */
+- (void)resendVerificationEmailDidFailWithError:(NSError *)error;
+
+/**
  * Sent when the Account is Linked Successfully
  */
 - (void)linkNewAccountDidSucceed;
@@ -379,12 +403,6 @@
 /*@{*/
 
 /**
- * Set the Backplane channel URL to which Capture will post identity/login messages to. For use with third party
- * integrations
- */
-+ (void)setBackplaneChannelUrl:(NSString *)backplaneChannelUrl __unused;
-
-/**
  * Method for configuring the library ot work with your Janrain Capture and Engage applications.
  *
  * @param config
@@ -393,12 +411,36 @@
 + (void)setCaptureConfig:(JRCaptureConfig *)config;
 
 /**
+ * Set the Engage app id, this will force Engage to reload it's configuration data
+ * @param engageAppId
+ *   The new Engage app id
+ */
++ (void)reconfigureWithEngageAppId:(NSString *)engageAppId;
+
+/**
+ * Set the Capture client id
+ * @param captureClientId
+ *   The new Capture client id
+ */
++ (void)setCaptureClientId:(NSString *)captureClientId;
+
+/**
+ * Set the Capture Domain
+ * @param captureDomain
+ *   The new Capture domain
+ */
++ (void)setCaptureDomain:(NSString *)captureDomain;
+
+/**
  * Method for configuring the library to work with your Janrain Capture and Engage applications.
  *
  * @param engageAppId
  *   This is your 20-character application ID for Engage. You can find this on your application's Engage Dashboard
  *   on <a href="http://rpxnow.com">http://rpxnow.com</a>. <em>Please do not use your API key. The API key
  *   should never be stored on the device, in code or otherwise.</em>
+ *
+ * @param engageAppUrl
+ *   The domain of your engage app url if it is not an rpxnow.com hosted Engage app
  *
  * @param captureDomain
  *   The domain of your Capture app instance (e.g., \@"my-name.janraincapture.com")
@@ -444,6 +486,26 @@
  *   application's dashboard.
  *
  **/
+
++ (void)setEngageAppId:(NSString *)engageAppId
+          engageAppUrl:(NSString *)engageAppUrl
+         captureDomain:(NSString *)captureDomain
+       captureClientId:(NSString *)clientId
+         captureLocale:(NSString *)captureLocale
+       captureFlowName:(NSString *)captureFlowName
+    captureFlowVersion:(NSString *)captureFlowVersion
+captureTraditionalSignInFormName:(NSString *)captureSignInFormName
+captureTraditionalSignInType:(__unused JRTraditionalSignInType)captureTraditionalSignInType
+captureEnableThinRegistration:(BOOL)enableThinRegistration
+customIdentityProviders:(NSDictionary *)customProviders
+captureTraditionalRegistrationFormName:(NSString *)captureTraditionalRegistrationFormName
+captureSocialRegistrationFormName:(NSString *)captureSocialRegistrationFormName
+          captureAppId:(NSString *)captureAppId;
+
+/**
+ * @deprecated
+ */
+
 + (void)setEngageAppId:(NSString *)engageAppId captureDomain:(NSString *)captureDomain
        captureClientId:(NSString *)clientId captureLocale:(NSString *)captureLocale
                  captureFlowName:(NSString *)captureFlowName captureFlowVersion:(NSString *)captureFlowVersion
@@ -611,6 +673,48 @@ captureRegistrationFormName:(NSString *)captureRegistrationFormName
              withCustomInterfaceOverrides:(NSDictionary *)customInterfaceOverrides
                                mergeToken:(NSString *)mergeToken
                               forDelegate:(id <JRCaptureDelegate>)delegate;
+/**
+ * Begin authentication for one specific provider when passed a valid oAuth token (and tokenSecret for Twitter)
+ * This method relies on the developer using the supported provider's (ONLY: Facebook, Google+, or Twitter) SDK
+ * to retrieve an oAuth access token with the necessary scopes/permissions.
+ * This method will pass the token to the Social Login server where it will be validated and exchanged for a Social
+ * Login token for use in further authentication or registration calls.
+ *
+ * @param provider
+ *   The name of the provider on which the user will authenticate. For a list of possible strings,
+ *   please see the \ref authenticationProviders "List of Providers"
+ *
+ * @param customInterfaceOverrides
+ *   A dictionary of objects and properties, indexed by the set of
+ *   \link customInterface pre-defined custom interface keys\endlink, to be used by the library to customize the look
+ *   and feel of the user interface and/or add a native login experience
+ *
+ * @param mergeToken
+ *   The merge token, retrieved from the merge flow error instance.
+ *
+ * @param engageAppUrl
+ *   Used for non-standard Engage App url's (nil for not used)
+ **/
+
++ (void)startEngageSignInWithNativeProviderToken:(NSString *)provider
+                                       withToken:(NSString *)token
+                                  andTokenSecret:(NSString *)tokenSecret
+                                      mergeToken:(NSString *)mergeToken
+                                    engageAppUrl:(NSString *)engageAppUrl
+                    withCustomInterfaceOverrides:(NSDictionary *)customInterfaceOverrides
+                                     forDelegate:(id <JRCaptureDelegate>)delegate;
+
+/**
+ * @deprecated
+ **/
++ (void)startEngageSignInWithNativeProviderToken:(NSString *)provider
+                                      withToken:(NSString *)token
+                                 andTokenSecret:(NSString *)tokenSecret
+                                     mergeToken:(NSString *)mergeToken
+                   withCustomInterfaceOverrides:(NSDictionary *)customInterfaceOverrides
+                                    forDelegate:(id <JRCaptureDelegate>)delegate;
+
+
 
 /**
  * Begin authentication, adding the option for your users to log directly into Capture through
@@ -721,6 +825,25 @@ captureRegistrationFormName:(NSString *)captureRegistrationFormName
 + (void)updateProfileForUser:(JRCaptureUser *)user delegate:(id <JRCaptureDelegate>)delegate;
 
 /**
+ * Updates the profile for a given user using an update_profile_native compatible form
+ */
++ (void)updateProfileForUserWithForm:(JRCaptureUser *)user
+                 withEditProfileForm:(NSString *)formName
+                            delegate:(id <JRCaptureDelegate>)delegate;
+
+
+/**
+ * Posts the provided form data to the provided endpoint with the provided form name.
+ * NOTE: This method does not validate the provided data contents - errors will be returned
+ * from the server-side api and must be handled by the integration developer.
+ */
++(void)postFormWithFormDataProvided:(JRCaptureUser *)user
+                  toCaptureEndpoint: (NSString *)endpointUrl
+                       withFormName:(NSString *)formName
+                       andFieldData:(NSMutableDictionary *)fieldData
+                           delegate:(id <JRCaptureDelegate>)delegate;
+
+/**
  * Signs the currently-signed-in user, if any, out.
  */
 + (void)clearSignInState __unused;
@@ -738,8 +861,23 @@ captureRegistrationFormName:(NSString *)captureRegistrationFormName
  *  @param delegate
  *    The JRCaptureDelegate object that wishes to receive messages regarding user authentication.
  */
-+ (void)startForgottenPasswordRecoveryForField:(NSString *)fieldValue recoverUri:(NSString *)recoverUri
++ (void)startForgottenPasswordRecoveryForField:(NSString *)fieldValue
                                       delegate:(id <JRCaptureDelegate>)delegate;
+
+/**
+ * Resend the email verification email
+ *
+ * A successful call will cause an email to be sent to the provided email address containing a "resend" link. The link
+ * will use the "verify_email_url" Capture setting as a base and includes a "verification_code" parameter that can be
+ * used to verify the email address.
+ *
+ * @param emailAddress
+ *   The email address of the user that needs to be verified
+ * @param delegate
+ *   The JRCaptureDelegate object that wishes to receive messages regarding user authentication.
+ */
++ (void)resendVerificationEmail:(NSString *)emailAddress delegate:(id <JRCaptureDelegate>)delegate;
+
 /**
  * Link new account for existing user
 **/
@@ -764,6 +902,7 @@ captureRegistrationFormName:(NSString *)captureRegistrationFormName
 + (void)startAccountUnLinking:(id <JRCaptureDelegate>)delegate forProfileIdentifier:(NSString *)identifier;
 
 + (void)startActualAccountUnLinking:(id <JRCaptureDelegate>)delegate forProfileIdentifier:(NSString *)identifier;
+
 
 @end
 

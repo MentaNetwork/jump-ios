@@ -66,7 +66,6 @@
 {
     [self.dirtyPropertySet addObject:@"string1"];
 
-    [_string1 autorelease];
     _string1 = [newString1 copy];
 }
 
@@ -79,7 +78,6 @@
 {
     [self.dirtyPropertySet addObject:@"string2"];
 
-    [_string2 autorelease];
     _string2 = [newString2 copy];
 }
 
@@ -92,8 +90,7 @@
 {
     [self.dirtyPropertySet addObject:@"oinoinoL3Object"];
 
-    [_oinoinoL3Object autorelease];
-    _oinoinoL3Object = [newOinoinoL3Object retain];
+    _oinoinoL3Object = newOinoinoL3Object;
 
     [_oinoinoL3Object setAllPropertiesToDirty];
 }
@@ -114,19 +111,19 @@
 
 + (id)oinoinoL2Object
 {
-    return [[[JROinoinoL2Object alloc] init] autorelease];
+    return [[JROinoinoL2Object alloc] init];
 }
 
-- (NSDictionary*)toDictionaryForEncoder:(BOOL)forEncoder
+- (NSDictionary*)newDictionaryForEncoder:(BOOL)forEncoder
 {
-    NSMutableDictionary *dictionary = 
+    NSMutableDictionary *dictionary =
         [NSMutableDictionary dictionaryWithCapacity:10];
 
     [dictionary setObject:(self.string1 ? self.string1 : [NSNull null])
                    forKey:@"string1"];
     [dictionary setObject:(self.string2 ? self.string2 : [NSNull null])
                    forKey:@"string2"];
-    [dictionary setObject:(self.oinoinoL3Object ? [self.oinoinoL3Object toDictionaryForEncoder:forEncoder] : [NSNull null])
+    [dictionary setObject:(self.oinoinoL3Object ? [self.oinoinoL3Object newDictionaryForEncoder:forEncoder] : [NSNull null])
                    forKey:@"oinoinoL3Object"];
 
     if (forEncoder)
@@ -135,10 +132,10 @@
                        forKey:@"dirtyPropertiesSet"];
         [dictionary setObject:(self.captureObjectPath ? self.captureObjectPath : [NSNull null])
                        forKey:@"captureObjectPath"];
-        [dictionary setObject:[NSNumber numberWithBool:self.canBeUpdatedOnCapture] 
+        [dictionary setObject:[NSNumber numberWithBool:self.canBeUpdatedOnCapture]
                        forKey:@"canBeUpdatedOnCapture"];
     }
-    
+
     return [NSDictionary dictionaryWithDictionary:dictionary];
 }
 
@@ -173,7 +170,7 @@
         [oinoinoL2Object.dirtyPropertySet setSet:dirtyPropertySetCopy];
     else
         [oinoinoL2Object.dirtyPropertySet removeAllObjects];
-    
+
     return oinoinoL2Object;
 }
 
@@ -186,7 +183,7 @@
 {
     DLog(@"%@ %@", capturePath, [dictionary description]);
 
-    NSSet *dirtyPropertySetCopy = [[self.dirtyPropertySet copy] autorelease];
+    NSSet *dirtyPropertySetCopy = [self.dirtyPropertySet copy];
 
     self.canBeUpdatedOnCapture = YES;
 
@@ -224,7 +221,7 @@
     NSMutableDictionary *snapshotDictionary =
              [NSMutableDictionary dictionaryWithCapacity:10];
 
-    [snapshotDictionary setObject:[[self.dirtyPropertySet copy] autorelease] forKey:@"oinoinoL2Object"];
+    [snapshotDictionary setObject:[self.dirtyPropertySet copy] forKey:@"oinoinoL2Object"];
 
     if (self.oinoinoL3Object)
         [snapshotDictionary setObject:[self.oinoinoL3Object snapshotDictionaryFromDirtyPropertySet]
@@ -321,7 +318,7 @@
 
 - (NSDictionary*)objectProperties
 {
-    NSMutableDictionary *dictionary = 
+    NSMutableDictionary *dictionary =
         [NSMutableDictionary dictionaryWithCapacity:10];
 
     [dictionary setObject:@"NSString" forKey:@"string1"];
@@ -331,12 +328,4 @@
     return [NSDictionary dictionaryWithDictionary:dictionary];
 }
 
-- (void)dealloc
-{
-    [_string1 release];
-    [_string2 release];
-    [_oinoinoL3Object release];
-
-    [super dealloc];
-}
 @end

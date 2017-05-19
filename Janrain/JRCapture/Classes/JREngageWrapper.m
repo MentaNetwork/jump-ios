@@ -47,12 +47,12 @@ typedef enum {
 @end
 
 @interface JREngageWrapper () <JREngageSigninDelegate>
-@property(retain) NSString *engageToken;
-@property(retain) JRTraditionalSignInViewController *nativeSignInViewController;
-@property(retain) id <JRCaptureDelegate> delegate;
+@property NSString *engageToken;
+@property JRTraditionalSignInViewController *nativeSignInViewController;
+@property id <JRCaptureDelegate> delegate;
 @property JREngageDialogState dialogState;
 @property bool didTearDownViewControllers;
-@property(retain) NSString *redirectUri;
+@property NSString *redirectUri;
 @end
 
 @implementation JREngageWrapper
@@ -88,27 +88,10 @@ static JREngageWrapper *singleton = nil;
 
 + (id)allocWithZone:(NSZone *)zone
 {
-    return [[self singletonInstance] retain];
+    return [self singletonInstance];
 }
 
 - (id)copyWithZone:(__unused NSZone *)zone __unused
-{
-    return self;
-}
-
-- (id)retain
-{
-    return self;
-}
-
-- (NSUInteger)retainCount
-{
-    return NSUIntegerMax;
-}
-
-- (oneway void)release { }
-
-- (id)autorelease
 {
     return self;
 }
@@ -117,10 +100,30 @@ static JREngageWrapper *singleton = nil;
     return [JREngageWrapper singletonInstance].delegate;
 }
 
++ (void)configureEngageWithAppId:(NSString *)appId engageAppUrl:(NSString *)engageAppUrl customIdentityProviders:(NSDictionary *)customProviders
+{
+    [JREngage setEngageAppId:appId appUrl:engageAppUrl tokenUrl:nil andDelegate:[JREngageWrapper singletonInstance]];
+    JREngage.customProviders = customProviders;
+}
+
++ (void)configureEngageWithOutAppId:(NSDictionary *)customProviders engageAppUrl:(NSString *)engageAppUrl
+{
+    [JREngage setEngageAppId:nil appUrl:engageAppUrl tokenUrl:nil andDelegate:[JREngageWrapper singletonInstance]];
+    JREngage.customProviders = customProviders;
+}
+
++ (void)reconfigureEngageWithNewAppId:(NSString *)appId engageAppUrl:(NSString *)engageAppUrl{
+    [JREngage setEngageAppId:appId appUrl:engageAppUrl tokenUrl:nil andDelegate:[JREngageWrapper singletonInstance]];
+}
+
 + (void)configureEngageWithAppId:(NSString *)appId customIdentityProviders:(NSDictionary *)customProviders
 {
-    [JREngage setEngageAppId:appId tokenUrl:nil andDelegate:[JREngageWrapper singletonInstance]];
+    [JREngage setEngageAppId:appId appUrl:nil tokenUrl:nil andDelegate:[JREngageWrapper singletonInstance]];
     JREngage.customProviders = customProviders;
+}
+
++ (void)reconfigureEngageWithNewAppId:(NSString *)appId {
+    [JREngage setEngageAppId:appId appUrl:nil tokenUrl:nil andDelegate:[JREngageWrapper singletonInstance]];
 }
 
 + (void)startAuthenticationDialogWithTraditionalSignIn:(JRTraditionalSignInType)nativeSignInType
@@ -153,7 +156,7 @@ static JREngageWrapper *singleton = nil;
                                          withRedirectUri:(NSString *)redirectUri
                                        forAccountLinking:(BOOL)linkAccount
 {
-    [JREngage updateTokenUrl:[JRCaptureData captureTokenUrlWithMergeToken:nil delegate:delegate ]];
+    [JREngage updateTokenUrl:[JRCaptureData captureTokenUrlWithMergeToken:nil forAccountLinking:linkAccount delegate:delegate ]];
     
     JREngageWrapper *wrapper = [JREngageWrapper singletonInstance];
     [wrapper setDelegate:delegate];
@@ -186,11 +189,11 @@ expandedCustomInterfaceOverrides:(NSMutableDictionary *)expandedCustomInterfaceO
             ([expandedCustomInterfaceOverrides objectForKey:kJRCaptureTraditionalSignInTitleString] ?
                     [expandedCustomInterfaceOverrides objectForKey:kJRCaptureTraditionalSignInTitleString] :
                     (nativeSignInType == JRTraditionalSignInEmailPassword ?
-                            @"Sign In With Your Email and Password" :
-                            @"Sign In With Your Username and Password"));
+                            NSLocalizedString(@"Sign In With Your Email and Password", nil) :
+                            NSLocalizedString(@"Sign In With Your Username and Password", nil)));
 
     if (![expandedCustomInterfaceOverrides objectForKey:kJRProviderTableSectionHeaderTitleString])
-        [expandedCustomInterfaceOverrides setObject:@"Sign In With a Social Provider"
+        [expandedCustomInterfaceOverrides setObject:NSLocalizedString(@"Sign In With a Social Provider", nil)
                                              forKey:kJRProviderTableSectionHeaderTitleString];
 
     UIView *const titleView = [expandedCustomInterfaceOverrides objectForKey:kJRCaptureTraditionalSignInTitleView];
@@ -220,6 +223,37 @@ expandedCustomInterfaceOverrides:(NSMutableDictionary *)expandedCustomInterfaceO
     [[JREngageWrapper singletonInstance] setDialogState:JREngageDialogStateAuthentication];
 
     [JREngage showAuthenticationDialogForProvider:provider withCustomInterfaceOverrides:customInterfaceOverrides];
+}
+
++ (void)startAuthenticationWithProviderToken:(NSString *)provider
+                                   withToken:(NSString *)token
+                              andTokenSecret:(NSString *)tokenSecret
+                withCustomInterfaceOverrides:(NSDictionary *)customInterfaceOverrides
+                                  mergeToken:(NSString *)mergeToken
+                                 forDelegate:(id <JRCaptureDelegate>)delegate
+{
+    [JREngage updateTokenUrl:[JRCaptureData captureTokenUrlWithMergeToken:mergeToken delegate:delegate]];
+    
+    [[JREngageWrapper singletonInstance] setDelegate:delegate];
+    [[JREngageWrapper singletonInstance] setDialogState:JREngageDialogStateAuthentication];
+    
+    [JREngage getAuthInfoTokenForNativeProvider:provider withToken:token andTokenSecret:tokenSecret];
+}
+
++ (void)startAuthenticationWithProviderToken:(NSString *)provider
+                                   withToken:(NSString *)token
+                              andTokenSecret:(NSString *)tokenSecret
+                withCustomInterfaceOverrides:(NSDictionary *)customInterfaceOverrides
+                                  mergeToken:(NSString *)mergeToken
+                                engageAppUrl:(NSString *)engageAppUrl
+                                 forDelegate:(id <JRCaptureDelegate>)delegate
+{
+    [JREngage updateTokenUrl:[JRCaptureData captureTokenUrlWithMergeToken:mergeToken delegate:delegate]];
+    
+    [[JREngageWrapper singletonInstance] setDelegate:delegate];
+    [[JREngageWrapper singletonInstance] setDialogState:JREngageDialogStateAuthentication];
+    
+    [JREngage getAuthInfoTokenForNativeProvider:provider withToken:token andTokenSecret:tokenSecret andEngageAppUrl:engageAppUrl];
 }
 
 - (void)tearingDownViewControllers:(NSNotification *)notification {
@@ -272,7 +306,7 @@ expandedCustomInterfaceOverrides:(NSMutableDictionary *)expandedCustomInterfaceO
 - (void)authenticationDidReachTokenUrl:(NSString *)tokenUrl withResponse:(NSURLResponse *)response
                             andPayload:(NSData *)tokenUrlPayload forProvider:(NSString *)provider
 {
-    NSString *payload = [[[NSString alloc] initWithData:tokenUrlPayload encoding:NSUTF8StringEncoding] autorelease];
+    NSString *payload = [[NSString alloc] initWithData:tokenUrlPayload encoding:NSUTF8StringEncoding];
     NSDictionary *payloadDict = [payload JR_objectFromJSONString];
 
     DLog(@"%@", payload);
@@ -330,12 +364,5 @@ expandedCustomInterfaceOverrides:(NSMutableDictionary *)expandedCustomInterfaceO
 - (void)dealloc
 {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
-
-    [delegate release];
-
-    [nativeSignInViewController release];
-    [engageToken release];
-    [redirectUri release];
-    [super dealloc];
 }
 @end

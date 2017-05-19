@@ -28,18 +28,22 @@
  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-
-
-#import <UIKit/UIKit.h>
-#import "BackplaneUtils.h"
+@import UIKit;
+#import "JRCapture.h"
 #import "JRCaptureObject.h"
 
-@interface RootViewController : UIViewController
+#import "AppAuth.h"
+
+@interface RootViewController : UIViewController{
+    BOOL isMergingAccount;
+    BOOL touchIDEnabled;
+}
+
+
 - (IBAction)browseButtonPressed:(id)sender;
 - (IBAction)tradRegButtonPressed:(id)sender;
 - (IBAction)refreshButtonPressed:(id)sender;
 - (IBAction)signInButtonPressed:(id)sender;
-- (IBAction)facebookAuthButtonPressed:(id)sender;
 - (IBAction)tradAuthButtonPressed:(id)sender;
 - (IBAction)signOutButtonPressed:(id)sender;
 - (IBAction)shareButtonPressed:(id)sender;
@@ -47,6 +51,10 @@
 - (IBAction)forgotPasswordButtonPressed:(id)sender;
 - (IBAction)linkAccountButtonPressed:(id)sender;
 - (IBAction)unlinkAccountButtonPressed:(id)sender;
+- (IBAction)resendVerificationButtonPressed:(id)sender;
+- (IBAction)signInNavButtonPressed:(id)sender;
+- (IBAction)touchIDSwitchChanged:(id)sender;
+- (IBAction)changePasswordButtonPressed:(id)sender;
 @property (weak, nonatomic) IBOutlet UIButton *shareButton;
 @property (weak) IBOutlet UILabel *currentUserLabel;
 @property (weak) IBOutlet UIImageView *currentUserProviderIcon;
@@ -55,12 +63,23 @@
 @property (weak) IBOutlet UIButton *refreshButton;
 @property (weak) IBOutlet UIButton *signInButton;
 @property (weak) IBOutlet UIButton *signOutButton;
+@property (weak, nonatomic) IBOutlet UISwitch *enableTouchIDSwitch;
+@property (weak, nonatomic) IBOutlet UILabel *enableTouchIDLabel;
+@property (weak) IBOutlet UIBarButtonItem *signInNavButton;
 @property (weak, nonatomic) IBOutlet UIButton *tradAuthButton;
-@property (weak, nonatomic) IBOutlet UIButton *directFacebookAuthButton;
 @property (weak, nonatomic) IBOutlet UIButton *refetchButton;
 @property (weak, nonatomic) IBOutlet UIButton *forgotPasswordButton;
+@property (weak, nonatomic) IBOutlet UIButton *changePasswordButton;
 @property (weak, nonatomic) IBOutlet UIButton *linkAccountButton;
 @property (weak, nonatomic) IBOutlet UIButton *unlinkAccountButton;
 @property (weak, nonatomic) IBOutlet UIButton *updateProfileButton;
-@property(nonatomic, strong) NSDictionary *customUi;
+@property (weak, nonatomic) IBOutlet UIButton *resendVerificationButton;
+@property(nonatomic) NSDictionary *customUi;
+@property NSString *currentProvider;
+@property NSString *activeMergeToken;
+@property BOOL isMergingAccount;
+@property BOOL touchIDEnabled;
+
+//- (void)captureSignInCompletion:(JRCaptureUser *)newCaptureUser status:(JRCaptureRecordStatus)captureRecordStatus;
+
 @end

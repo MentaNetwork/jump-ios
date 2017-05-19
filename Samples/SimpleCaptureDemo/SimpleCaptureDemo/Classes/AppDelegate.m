@@ -27,29 +27,36 @@
  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+//#define JR_FACEBOOK_SDK_TEST
 
-//#import <FacebookSDK/FacebookSDK.h>
 #import "AppDelegate.h"
 #import "JRCapture.h"
-#import "BackplaneUtils.h"
 #import "debug_log.h"
 #import "JRSessionData.h"
 #import "JRCaptureData.h"
 #import "JRCaptureConfig.h"
+#import "JRCaptureError.h"
+#import "JREngage.h"
+#import <Social/Social.h>
+#import <Accounts/Accounts.h>
 
-#ifdef JR_FACEBOOK_SDK_TEST
-#  import "FacebookSDK/FacebookSDK.h"
-#endif
+
+
+@interface MyCaptureDelegate : NSObject <JRCaptureDelegate>
+@end
 
 @interface JRSessionData (Internal)
 + (void)setServerUrl:(NSString *)serverUrl_;
 @end
+
 
 AppDelegate *appDelegate = nil;
 
 @implementation AppDelegate
 @synthesize window;
 @synthesize prefs;
+
+
 
 // Capture stuff:
 @synthesize captureUser;
@@ -67,23 +74,29 @@ AppDelegate *appDelegate = nil;
 @synthesize customProviders;
 @synthesize captureForgottenPasswordFormName;
 @synthesize captureEditProfileFormName;
+@synthesize resendVerificationFormName;
 
-// Backplane / LiveFyre stuff:
-@synthesize bpChannelUrl;
-@synthesize lfToken;
-@synthesize bpBusUrlString;
-@synthesize liveFyreNetwork;
-@synthesize liveFyreSiteId;
-@synthesize liveFyreArticleId;
 
 // Demo state machine stuff:
 @synthesize currentProvider;
 @synthesize isNotYetCreated;
-//@synthesize engageSignInWasCanceled;
+
+//OpenID AppAuth
+@synthesize googlePlusClientId;
+@synthesize googlePlusRedirectUri;
+@synthesize googlePlusOpenIDScopes;
+@synthesize openIDAppAuthAuthorizationFlow;
+
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
     appDelegate = self;
+
+    // register for Janrain notification(s)
+    [[NSNotificationCenter defaultCenter]
+            addObserver:self
+               selector:@selector(onJRDownLoadFlowResult:)
+                   name:JRDownloadFlowResult object:nil];
 
     [self loadDemoConfigFromPlist];
 
@@ -102,26 +115,11 @@ AppDelegate *appDelegate = nil;
     config.captureSocialRegistrationFormName = captureSocialRegistrationFormName;
     config.captureAppId = captureAppId;
     config.forgottenPasswordFormName = captureForgottenPasswordFormName;
-    config.passwordRecoverUri = @"http://not-a-real-uri.janrain.com/forgotten_password.html";
     config.editProfileFormName = captureEditProfileFormName;
+    config.resendEmailVerificationFormName = resendVerificationFormName;
 
     [JRCapture setCaptureConfig:config];
-
-    [BackplaneUtils asyncFetchNewBackplaneChannelWithBus:bpBusUrlString
-                                              completion:^(NSString *newChannel, NSError *error)
-                                              {
-                                                  if (newChannel)
-                                                  {
-                                                      self.bpChannelUrl = newChannel;
-                                                  }
-                                                  else
-                                                  {
-                                                      ALog("%@", [error description]);
-                                                  }
-                                              }];
-
     self.prefs = [NSUserDefaults standardUserDefaults];
-
     self.currentProvider = [self.prefs objectForKey:cJRCurrentProvider];
 
     NSData *archivedCaptureUser = [self.prefs objectForKey:cJRCaptureUser];
@@ -130,20 +128,45 @@ AppDelegate *appDelegate = nil;
         self.captureUser = [NSKeyedUnarchiver unarchiveObjectWithData:archivedCaptureUser];
     }
 
-#   ifdef JR_FACEBOOK_SDK_TEST
-        FBSession *t = [FBSession activeSession];
-#   endif
-
     return YES;
 }
 
-#   ifdef JR_FACEBOOK_SDK_TEST
-- (BOOL)application:(UIApplication *)application openURL:(NSURL *)url sourceApplication:(NSString *)sourceApplication
+
+/*! @brief Handles inbound URLs. Checks if the URL matches the redirect URI for a pending
+ AppAuth authorization request.
+ */
+- (BOOL)application:(UIApplication *)app
+            openURL:(NSURL *)url
+            options:(NSDictionary<NSString *, id> *)options {
+    // Sends the URL to the current authorization flow (if any) which will process it if it relates to
+    // an authorization response.
+    if ([self.openIDAppAuthAuthorizationFlow resumeAuthorizationFlowWithURL:url ]) {
+        self.openIDAppAuthAuthorizationFlow = nil;
+        return YES;
+    }
+    // Your additional URL handling (if any) goes here.
+    return NO;
+}
+
+/*! @brief Forwards inbound URLs for iOS 8.x and below to @c application:openURL:options:.
+ @discussion When you drop support for versions of iOS earlier than 9.0, you can delete this
+ method. NB. this implementation doesn't forward the sourceApplication or annotations. If you
+ need these, then you may want @c application:openURL:options to call this method instead.
+ */
+- (BOOL)application:(UIApplication *)application
+            openURL:(NSURL *)url
+  sourceApplication:(NSString *)sourceApplication
          annotation:(id)annotation
 {
-        [FBSession.activeSession handleOpenURL:url];
+    //NSString *urlScheme = url.scheme;
+    //NSLog(@"openURL %@", url);
+    //return [JRCapture application:application openURL:url sourceApplication:sourceApplication annotation:annotation];
+    //return YES;
+    return [self application:application
+                     openURL:url
+                     options:@{}];
 }
-#   endif
+
 
 - (void)applicationWillResignActive:(UIApplication *)application
 {
@@ -168,9 +191,7 @@ AppDelegate *appDelegate = nil;
 - (void)applicationDidBecomeActive:(UIApplication *)application
 {
     // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
-#   ifdef JR_FACEBOOK_SDK_TEST
-        [FBSession.activeSession handleDidBecomeActive];
-#   endif
+
 }
 
 - (void)applicationWillTerminate:(UIApplication *)application
@@ -227,16 +248,8 @@ AppDelegate *appDelegate = nil;
         self.captureForgottenPasswordFormName = [cfg objectForKey:@"captureForgottenPasswordFormName"];
     if ([cfg objectForKey:@"captureEditProfileFormName"])
         self.captureEditProfileFormName = [cfg objectForKey:@"captureEditProfileFormName"];
-    if ([cfg objectForKey:@"bpBusUrlString"])
-        self.bpBusUrlString = [cfg objectForKey:@"bpBusUrlString"];
-    if ([cfg objectForKey:@"bpChannelUrl"])
-        self.bpChannelUrl = [cfg objectForKey:@"bpChannelUrl"];
-    if ([cfg objectForKey:@"liveFyreNetwork"])
-        self.liveFyreNetwork = [cfg objectForKey:@"liveFyreNetwork"];
-    if ([cfg objectForKey:@"liveFyreSiteId"])
-        self.liveFyreSiteId = [cfg objectForKey:@"liveFyreSiteId"];
-    if ([cfg objectForKey:@"liveFyreArticleId"])
-        self.liveFyreArticleId = [cfg objectForKey:@"liveFyreArticleId"];
+    if ([cfg objectForKey:@"resendVerificationFormName"])
+        self.resendVerificationFormName = [cfg objectForKey:@"resendVerificationFormName"];
     if ([cfg objectForKey:@"rpxDomain"])
         [JRSessionData setServerUrl:[NSString stringWithFormat:@"https://%@", [cfg objectForKey:@"rpxDomain"]]];
     if ([cfg objectForKey:@"flowUsesTestingCdn"])
@@ -244,11 +257,34 @@ AppDelegate *appDelegate = nil;
         BOOL useTestingCdn = [[cfg objectForKey:@"flowUsesTestingCdn"] boolValue];
         [JRCaptureData sharedCaptureData].flowUsesTestingCdn = useTestingCdn;
     }
+    //OpenID AppAuth
+    if ([cfg objectForKey:@"googlePlusClientId"])
+        self.googlePlusClientId = [cfg objectForKey:@"googlePlusClientId"];
+    if ([cfg objectForKey:@"googlePlusRedirectUri"])
+        self.googlePlusRedirectUri = [cfg objectForKey:@"googlePlusRedirectUri"];
+    if ([cfg objectForKey:@"googlePlusOpenIDScopes"])
+        self.googlePlusOpenIDScopes = [cfg objectForKey:@"googlePlusOpenIDScopes"];
 }
 
 - (void)saveCaptureUser
 {
     [self.prefs setObject:[NSKeyedArchiver archivedDataWithRootObject:self.captureUser] forKey:cJRCaptureUser];
 }
+
+- (void)onJRDownLoadFlowResult:(NSNotification *)notification
+{
+    if ([notification object] != nil){
+        JRCaptureError *error = (JRCaptureError*)[notification object];
+        NSLog(@"JRCaptureError! Desc=%@", [error localizedDescription]);
+        for (NSString *key in [[error userInfo] allKeys]){
+            NSLog(@"JRCaptureError:%@", [[error userInfo] objectForKey:key]);
+        }
+    }
+    else
+    {
+        NSLog(@"THE Janrain FLOW was successfully downloaded");
+    }
+}
+
 
 @end

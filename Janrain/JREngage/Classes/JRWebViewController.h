@@ -33,18 +33,28 @@
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #import <UIKit/UIKit.h>
+//#import <Webkit/Webkit.h>
 #import "JRConnectionManager.h"
 #import "JRSessionData.h"
+//#import <SafariServices/SafariServices.h>
 
 static NSString *const WINDOWS_LIVE_LOAD = @"request";
 static NSString *const MEU_CONNECTION_TAG = @"rpx_result";
 
-@interface JRWebViewController : UIViewController <UINavigationBarDelegate, UIWebViewDelegate,
-        JRConnectionManagerDelegate, JRUserInterfaceDelegate>
-@property(nonatomic, retain) IBOutlet UIView *myBackgroundView;
-@property(nonatomic, retain) IBOutlet UIWebView *myWebView;
-@property(nonatomic, retain) NSString *originalCustomUserAgent;
+/*
+ @interface JRWebViewController : UIViewController <UINavigationBarDelegate, UIWebViewDelegate,
+ JRConnectionManagerDelegate, JRUserInterfaceDelegate, SFSafariViewControllerDelegate, WKUIDelegate>
+ */
+
+@interface JRWebViewController : UIViewController <UINavigationBarDelegate,
+        JRConnectionManagerDelegate, JRUserInterfaceDelegate, UIWebViewDelegate>
+@property(nonatomic) IBOutlet UIView *myBackgroundView;
+//@property(nonatomic) IBOutlet WKWebView *myBackgroundView;
+@property(nonatomic) IBOutlet UIWebView *myWebView;
+//@property(nonatomic) IBOutlet WKWebView *myWebView;
+@property(nonatomic) NSString *originalCustomUserAgent;
 
 - (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil
    andCustomInterface:(NSDictionary *)theCustomInterface;
+
 @end

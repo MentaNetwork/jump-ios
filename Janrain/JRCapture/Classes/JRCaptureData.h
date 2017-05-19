@@ -1,3 +1,5 @@
+#import "JRCaptureEnvironment.h"
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  Copyright (c) 2012, Janrain, Inc.
 
@@ -29,30 +31,31 @@
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 @class JRCaptureConfig;
+@class JRCaptureFlow;
 
 /**
  * @internal
  */
-@interface JRCaptureData : NSObject
-@property(nonatomic, retain) NSString *bpChannelUrl;
-@property(nonatomic, readonly, retain) NSString *captureBaseUrl;
-@property(nonatomic, readonly, retain) NSString *captureRedirectUri;
-@property(nonatomic, readonly, retain) NSString *passwordRecoverUri;
-@property(nonatomic, readonly, retain) NSString *clientId;
-@property(nonatomic, readonly, retain) NSString *accessToken;
-@property(nonatomic, readonly, retain) NSString *refreshSecret;
-@property(nonatomic, readonly, retain) NSString *captureLocale;
-@property(nonatomic, readonly, retain) NSString *captureTraditionalSignInFormName;
-@property(nonatomic, readonly, retain) NSString *captureFlowName;
-@property(nonatomic, readonly, retain) NSString *captureTraditionalRegistrationFormName;
-@property(nonatomic, readonly, retain) NSString *captureSocialRegistrationFormName;
-@property(nonatomic, readonly, retain) NSString *captureFlowVersion;
-@property(nonatomic, readonly, retain) NSString *captureAppId;
-@property(nonatomic, readonly, retain) NSDictionary *captureFlow;
-@property(nonatomic, readonly, retain) NSString *captureForgottenPasswordFormName;
-@property(nonatomic, readonly, retain) NSString *captureEditProfileFormName;
+@interface JRCaptureData : NSObject <JRCaptureEnvironment>
+
+@property(nonatomic, readonly) NSString *captureBaseUrl;
+@property(nonatomic, readonly) NSString *captureRedirectUri;
+@property(nonatomic, readonly) NSString *clientId;
+@property(nonatomic, readonly) NSString *accessToken;
+@property(nonatomic, readonly) NSString *refreshSecret;
+@property(nonatomic, readonly) NSString *captureLocale;
+@property(nonatomic, readonly) NSString *captureTraditionalSignInFormName;
+@property(nonatomic, readonly) NSString *captureFlowName;
+@property(nonatomic, readonly) NSString *captureTraditionalRegistrationFormName;
+@property(nonatomic, readonly) NSString *captureSocialRegistrationFormName;
+@property(nonatomic, readonly) NSString *captureFlowVersion;
+@property(nonatomic, readonly) NSString *captureAppId;
+@property(nonatomic, readonly) JRCaptureFlow *captureFlow;
+@property(nonatomic, readonly) NSString *captureForgottenPasswordFormName;
+@property(nonatomic, readonly) NSString *captureEditProfileFormName;
+@property(nonatomic, readonly) NSString *resendEmailVerificationFormName;
 @property(nonatomic) BOOL flowUsesTestingCdn;
-@property(nonatomic, readonly, retain) NSArray *linkedProfiles;
+@property(nonatomic, readonly) NSArray *linkedProfiles;
 @property(nonatomic, readonly) BOOL socialSignMode;
 
 + (void)setAccessToken:(NSString *)token;
@@ -62,6 +65,8 @@
 + (void)setCaptureConfig:(JRCaptureConfig *)config;
 
 + (NSString *)captureTokenUrlWithMergeToken:(NSString *)mergeToken delegate:(id)delegate;
+
++ (NSString *)captureTokenUrlWithMergeToken:(NSString *)mergeToken forAccountLinking:(BOOL)linkAccount delegate:(id)delegate;
 
 + (void)clearSignInState;
 
@@ -74,6 +79,10 @@
 + (void)setLinkedProfiles:(NSArray *)profileData;
 
 + (NSArray *)getLinkedProfiles;
+
++ (void)setCaptureClientId:(NSString*)captureClientId;
+
++ (void)setCaptureBaseUrl:(NSString *)baseUrl;
 
 - (NSString *)downloadedFlowVersion;
 

@@ -44,7 +44,8 @@
  * @{
  **/
 
-NSString *const kJRCaptureErrorDomain;
+FOUNDATION_EXPORT NSString *const kJRCaptureErrorDomain;
+
 #define GENERIC_ERROR_RANGE 1000
 #define LOCAL_APID_ERROR_RANGE 2000
 #define APID_ERROR_RANGE 3000
@@ -56,8 +57,9 @@ NSString *const kJRCaptureErrorDomain;
  **/
 typedef enum
 {
-    JRCaptureErrorGeneric            = GENERIC_ERROR_RANGE, /**< Generic Capture error */
-    JRCaptureErrorGenericBadPassword = JRCaptureErrorGeneric + 100
+    JRCaptureErrorGeneric            = GENERIC_ERROR_RANGE,         /**< Generic Capture error */
+    JRCaptureErrorGenericBadPassword = APID_ERROR_RANGE + 210,
+    JRCaptureErrorWhileParsingJson   = JRCaptureErrorGeneric + 101, /**< Error Parsing JSON Flow */
 } JRCaptureGenericError;
 
 /**
@@ -153,7 +155,8 @@ typedef enum
 
 - (BOOL)isMergeFlowError;
 
-+ (JRCaptureError *)connectionCreationErr:(NSURLRequest *)request forDelegate:(id <JRConnectionManagerDelegate>)delegate
++ (JRCaptureError *)connectionCreationErr:(NSURLRequest *)request
+                              forDelegate:(id <JRConnectionManagerDelegate>)delegate
                                   withTag:(id)tag;
 
 - (NSString *)existingProvider;
@@ -173,8 +176,30 @@ typedef enum
 @interface JRCaptureError (JRCaptureError_Builders)
 + (JRCaptureError *)invalidArgumentErrorWithParameterName:(NSString *)parameterName;
 + (JRCaptureError *)invalidInternalStateErrorWithDescription:(NSString *)description;
-+ (JRCaptureError *)errorFromResult:(NSDictionary *)result onProvider:(NSString *)onProvider
-                                                          engageToken:(NSString *)mergeToken;
+
++ (JRCaptureError *)errorFromResult:(NSDictionary *)result
+                         onProvider:(NSString *)onProvider
+                        engageToken:(NSString *)mergeToken;
+
+/*
+ *  Factory method to create a generic JRCaptureError
+ *
+ *  @param error
+ *      short description of error. The 'value' of the key
+ *      NSLocalizedDescriptionKey in the userInfo dictionary
+ *  @param code
+ *      A JRCaptureError enum value defined in HRCaptureError.h
+ *  @param description
+ *      full description of error. The 'value' of the key
+ *      NSLocalizedFailureReasonErrorKey in the userInfo dictionary
+ *  @param extraFields
+ *      Optional error data. Can be nil.
+ */
++ (JRCaptureError *)errorWithErrorString:(NSString *)error
+                                    code:(NSInteger)code
+                             description:(NSString *)description
+                             extraFields:(NSDictionary *)extraFields;
+
 + (JRCaptureError *)invalidApiResponseErrorWithString:(NSString *)rawResponse;
 + (JRCaptureError *)invalidApiResponseErrorWithObject:(id)rawResponse;
 @end

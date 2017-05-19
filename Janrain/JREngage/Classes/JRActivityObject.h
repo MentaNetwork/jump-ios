@@ -43,6 +43,7 @@
  * are ready to share.
  **/
 
+#import <UIKit/UIKit.h>
 #import <Foundation/Foundation.h>
 
 /**
@@ -78,7 +79,7 @@
 }
 @property (readonly) NSString *src;          /**< The photo's URL. */
 @property (readonly) NSString *href;         /**< The URL where a user should be taken if he or she clicks the photo. */
-@property (retain)   UIImage  *preview;      /**< \internal Contains the downloaded preview of the image for display in the publish activity dialog. */
+@property    UIImage  *preview;      /**< \internal Contains the downloaded preview of the image for display in the publish activity dialog. */
 
 /**
  * @name Constructors
@@ -148,7 +149,7 @@
 @property            NSUInteger  height;          /**< Used to override the default height. */
 @property            NSUInteger  expanded_width;  /**< Width the video will resize to once the user clicks it. */
 @property            NSUInteger  expanded_height; /**< Height the video will resize to once the user clicks it. */
-@property (retain)   UIImage    *preview;         /**< \internal Contains the downloaded preview of the image for display in the publish activity dialog. */
+@property    UIImage    *preview;         /**< \internal Contains the downloaded preview of the image for display in the publish activity dialog. */
 /**
  * @name Constructors
  **/

@@ -34,6 +34,9 @@
 #import "JRCaptureConfig.h"
 #import "NSDictionary+JRQueryParams.h"
 #import "JREngageWrapper.h"
+#import "JRCaptureFlow.h"
+#import "JRCaptureError.h"
+#import "JRCapture.h"
 
 #define cJRCaptureKeychainIdentifier @"capture_tokens.janrain"
 #define cJRCaptureKeychainUserName @"capture_user"
@@ -70,29 +73,33 @@ static NSString *const FLOW_KEY = @"JR_capture_flow";
 
 @interface JRCaptureData ()
 
-@property(nonatomic, retain) NSString *accessToken;
-@property(nonatomic, retain) NSString *refreshSecret;
+@property(nonatomic) NSString *accessToken;
+@property(nonatomic) NSString *refreshSecret;
 
-@property(nonatomic, retain) NSString *captureBaseUrl;
-@property(nonatomic, retain) NSString *clientId;
-@property(nonatomic, retain) NSString *captureAppId;
-@property(nonatomic, retain) NSString *captureRedirectUri;
-@property(nonatomic, retain) NSString *passwordRecoverUri;
+@property(nonatomic) NSString *captureBaseUrl;
+@property(nonatomic) NSString *clientId;
+@property(nonatomic) NSString *captureAppId;
+@property(nonatomic) NSString *captureRedirectUri;
+@property(nonatomic) NSString *passwordRecoverUri;
 
-@property(nonatomic, retain) NSString *captureFlowName;
-@property(nonatomic, retain) NSString *captureFlowVersion;
-@property(nonatomic, retain) NSString *captureLocale;
-@property(nonatomic, retain) NSString *captureTraditionalSignInFormName;
-@property(nonatomic, retain) NSString *captureTraditionalRegistrationFormName;
-@property(nonatomic, retain) NSString *captureSocialRegistrationFormName;
-@property(nonatomic, retain) NSString *captureForgottenPasswordFormName;
-@property(nonatomic, retain) NSString *captureEditProfileFormName;
+@property(nonatomic) NSString *captureFlowName;
+@property(nonatomic) NSString *captureFlowVersion;
+@property(nonatomic) NSString *captureLocale;
+@property(nonatomic) NSString *captureTraditionalSignInFormName;
+@property(nonatomic) NSString *captureTraditionalRegistrationFormName;
+@property(nonatomic) NSString *captureSocialRegistrationFormName;
+@property(nonatomic) NSString *captureForgottenPasswordFormName;
+@property(nonatomic) NSString *captureEditProfileFormName;
+@property(nonatomic) NSString *resendEmailVerificationFormName;
 
 //@property(nonatomic) JRTraditionalSignInType captureTradSignInType;
 @property(nonatomic) BOOL captureEnableThinRegistration;
 
-@property(nonatomic, retain) NSDictionary *captureFlow;
-@property(nonatomic, retain) NSArray *linkedProfiles;
+@property(nonatomic) NSString *downloadFlowUrl;
+@property(nonatomic) NSString *engageAppUrl;
+
+@property(nonatomic) JRCaptureFlow *captureFlow;
+@property(nonatomic) NSArray *linkedProfiles;
 @property(nonatomic) BOOL initialized;
 @property(nonatomic) BOOL socialSignMode;
 @end
@@ -104,7 +111,6 @@ static JRCaptureData *singleton = nil;
 @synthesize captureBaseUrl;
 @synthesize accessToken;
 @synthesize refreshSecret;
-@synthesize bpChannelUrl;
 @synthesize captureLocale;
 @synthesize captureTraditionalSignInFormName;
 //@synthesize captureTradSignInType;
@@ -113,11 +119,13 @@ static JRCaptureData *singleton = nil;
 @synthesize captureSocialRegistrationFormName;
 @synthesize captureForgottenPasswordFormName;
 @synthesize captureEditProfileFormName;
+@synthesize resendEmailVerificationFormName;
 @synthesize captureFlowVersion;
 @synthesize captureAppId;
 @synthesize captureFlow;
 @synthesize captureRedirectUri;
-@synthesize passwordRecoverUri;
+@synthesize downloadFlowUrl;
+@synthesize engageAppUrl;
 
 - (JRCaptureData *)init
 {
@@ -156,7 +164,7 @@ static JRCaptureData *singleton = nil;
 
 + (id)allocWithZone:(NSZone *)zone
 {
-    return [[self sharedCaptureData] retain];
+    return [self sharedCaptureData];
 }
 
 - (id)copyWithZone:(__unused NSZone *)zone __unused
@@ -164,25 +172,16 @@ static JRCaptureData *singleton = nil;
     return self;
 }
 
-- (id)retain
-{
-    return self;
++ (NSString *)captureTokenUrlWithMergeToken:(NSString *)mergeToken
+                          delegate:(id)delegate {
+    return [self captureTokenUrlWithMergeToken:mergeToken forAccountLinking:NO delegate:delegate];
 }
 
-- (NSUInteger)retainCount
-{
-    return NSUIntegerMax;
-}
-
-- (oneway void)release { }
-
-- (id)autorelease
-{
-    return self;
-}
-
-+ (NSString *)captureTokenUrlWithMergeToken:(NSString *)mergeToken delegate:(id)delegate {
++ (NSString *)captureTokenUrlWithMergeToken:(NSString *)mergeToken
+                          forAccountLinking:(BOOL)linkAccount
+                                   delegate:(id)delegate {
     JRCaptureData *captureData = [JRCaptureData sharedCaptureData];
+    
     NSString *redirectUri = [singleton redirectUri];
     NSString *thinReg = [JRCaptureData sharedCaptureData].captureEnableThinRegistration ? @"true" : @"false";
     NSMutableDictionary *urlArgs = [NSMutableDictionary dictionaryWithDictionary:
@@ -191,14 +190,13 @@ static JRCaptureData *singleton = nil;
                     @"locale" : captureData.captureLocale,
                     @"response_type" : [captureData responseType:delegate],
                     @"redirect_uri" : redirectUri,
-                    @"thin_registration" : thinReg,
-                    @"refresh_secret" : [self generateAndStoreRefreshSecret],
+                    @"thin_registration" : thinReg
             }];
-
+    
+    if (!linkAccount) [urlArgs setObject:[self generateAndStoreRefreshSecret] forKey:@"refresh_secret"];
     if (captureData.captureFlowName) [urlArgs setObject:captureData.captureFlowName forKey:@"flow"];
     if ([captureData downloadedFlowVersion])
         [urlArgs setObject:[captureData downloadedFlowVersion] forKey:@"flow_version"];
-    if (captureData.bpChannelUrl) [urlArgs setObject:captureData.bpChannelUrl forKey:@"bp_channel"];
     if (mergeToken) [urlArgs setObject:mergeToken forKey:@"merge_token"];
     if (captureData.captureSocialRegistrationFormName)
     {
@@ -264,7 +262,9 @@ static JRCaptureData *singleton = nil;
     captureDataInstance.captureAppId = config.captureAppId;
     captureDataInstance.captureForgottenPasswordFormName = config.forgottenPasswordFormName;
     captureDataInstance.captureEditProfileFormName = config.editProfileFormName;
-    captureDataInstance.passwordRecoverUri = config.passwordRecoverUri;
+    captureDataInstance.resendEmailVerificationFormName = config.resendEmailVerificationFormName;
+    captureDataInstance.downloadFlowUrl = config.downloadFlowUrl;
+    captureDataInstance.engageAppUrl = config.engageAppUrl;
 
     if ([captureDataInstance.captureLocale length] &&
             [captureDataInstance.captureFlowName length] && [captureDataInstance.captureAppId length])
@@ -276,59 +276,68 @@ static JRCaptureData *singleton = nil;
 
 - (void)loadFlow
 {
-    self.captureFlow =
+    NSDictionary *flowDict =
             [NSKeyedUnarchiver unarchiveObjectWithData:[[NSUserDefaults standardUserDefaults] objectForKey:FLOW_KEY]];
+    self.captureFlow = [JRCaptureFlow flowWithDictionary:flowDict];
 }
 
 - (NSString *)getForgottenPasswordFieldName {
-    if (!self.captureForgottenPasswordFormName) return nil;
     if (!self.captureForgottenPasswordFormName) {
         [NSException raiseJRDebugException:@"JRCaptureMissingParameterException"
                                     format:@"Missing capture configuration setting forgottenPasswordFormName"];
     }
 
-    NSDictionary *fields = [self.captureFlow objectForKey:@"fields"];
-    NSDictionary *form = [fields objectForKey:self.captureForgottenPasswordFormName];
-    NSArray *formFields = [form objectForKey:@"fields"];
-
-    for (NSString *fieldName in formFields) {
-        NSDictionary *field = [fields objectForKey:fieldName];
-        NSString * type = [field objectForKey:@"type"];
-
-        if ([type isEqualToString:@"email"] || [type isEqualToString:@"text"]) {
-            return fieldName;
-        }
-    }
-
-    return nil;
+    return [self.captureFlow userIdentifyingFieldForForm:self.captureForgottenPasswordFormName];
 }
 
 - (void)downloadFlow
 {
     NSString *flowVersion = self.captureFlowVersion ? self.captureFlowVersion : @"HEAD";
 
-    NSString *flowUrlString =
-            [NSString stringWithFormat:@"https://%@.cloudfront.net/widget_data/flows/%@/%@/%@/%@.json",
-                                       self.flowUsesTestingCdn ? @"dlzjvycct5xka" : @"d1lqe9temigv1p",
-                                       self.captureAppId, self.captureFlowName, flowVersion,
-                                       self.captureLocale];
+    NSString *flowUrlString = @"";
+    
+    if (self.downloadFlowUrl.length > 0){
+        flowUrlString = [NSString stringWithFormat:@"https://%@/widget_data/flows/%@/%@/%@/%@.json",
+                         self.downloadFlowUrl,
+                         self.captureAppId, self.captureFlowName,
+                         flowVersion, self.captureLocale];
+    }else{
+        flowUrlString = [NSString stringWithFormat:@"https://%@.cloudfront.net/widget_data/flows/%@/%@/%@/%@.json",
+                         self.flowUsesTestingCdn ? @"dlzjvycct5xka" : @"d1lqe9temigv1p",
+                         self.captureAppId, self.captureFlowName, flowVersion,
+                         self.captureLocale];
+    }
+    
     NSMutableURLRequest *downloadRequest = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:flowUrlString]];
     [downloadRequest setValue:@"gzip" forHTTPHeaderField:@"Accept-Encoding"];
 
-    [NSURLConnection sendAsynchronousRequest:downloadRequest queue:[NSOperationQueue mainQueue]
-                           completionHandler:^(NSURLResponse *r, NSData *d, NSError *e)
-                           {
-                               if (e)
-                               {
-                                   ALog(@"Error downloading flow: %@", e);
-                                   return;
-                               }
-                               DLog(@"Fetched flow URL: %@", flowUrlString);
-                               [self processFlow:d response:(NSHTTPURLResponse *) r];
-                           }];
+    [NSURLConnection
+       sendAsynchronousRequest:downloadRequest
+                         queue:[NSOperationQueue mainQueue]
+             completionHandler:^(NSURLResponse *r, NSData *d, NSError *e)
+             {
+                 /*
+                  * "Notification Centers" @ developer.apple.com
+                  * A notification center delivers notifications to observers synchronously. In other words,
+                  * when posting a notification, control does not return to the poster until all observers
+                  * have received and processed the notification. To send notifications asynchronously use
+                  * a notification queue, which is described in “Notification Queues.”
+                  */
+                 if (e)
+                 {
+                     ALog(@"Error downloading flow: %@", e);
+                     NSNotification *notification = [NSNotification notificationWithName:JRDownloadFlowResult object:e];
+                     [[NSNotificationQueue defaultQueue] enqueueNotification:notification postingStyle:NSPostWhenIdle];
+                     return;
+                 }
+                 DLog(@"Fetched flow URL: %@", flowUrlString);
+                 NSError *error = [self processFlow:d response:(NSHTTPURLResponse *) r];
+                 NSNotification *notification = [NSNotification notificationWithName:JRDownloadFlowResult object:error];
+                 [[NSNotificationQueue defaultQueue] enqueueNotification:notification postingStyle:NSPostWhenIdle];
+             }];
 }
 
-- (void)processFlow:(NSData *)flowData response:(NSHTTPURLResponse *)response
+- (NSError *)processFlow:(NSData *)flowData response:(NSHTTPURLResponse *)response
 {
     NSError *jsonErr = nil;
     NSObject *parsedFlow = [NSJSONSerialization JSONObjectWithData:flowData options:(NSJSONReadingOptions) 0
@@ -339,24 +348,32 @@ static JRCaptureData *singleton = nil;
         NSString *responseString = [NSHTTPURLResponse localizedStringForStatusCode:[response statusCode]];
         ALog(@"Error parsing flow JSON, response: %@", responseString);
         ALog(@"Error parsing flow JSON, err: %@", [jsonErr description]);
-        return;
+        return jsonErr;
     }
     
     if (![parsedFlow isKindOfClass:[NSDictionary class]])
     {
-        ALog(@"Error parsing flow JSON, top level object was not a hash...: %@", [parsedFlow description]);
-        return;
+        NSString *errorMsg = [NSString stringWithFormat:@"Error parsing flow JSON, top level object was not a hash...: %@",
+                        [parsedFlow description]];
+
+        ALog(@"%@", errorMsg);
+        JRCaptureError *error = [JRCaptureError errorWithErrorString:@"JSON Parsing Error"
+                                                                code:JRCaptureErrorWhileParsingJson
+                                                         description:errorMsg
+                                                         extraFields:nil];
+        return error;
     }
 
-    self.captureFlow = (NSDictionary *) parsedFlow;
+    self.captureFlow = [JRCaptureFlow flowWithDictionary:(NSDictionary *) parsedFlow];
     DLog(@"Parsed flow, version: %@", [self downloadedFlowVersion]);
     
     [self writeCaptureFlow];
+    return nil;
 }
 
 - (void)writeCaptureFlow
 {
-    [[NSUserDefaults standardUserDefaults] setValue:[NSKeyedArchiver archivedDataWithRootObject:captureFlow]
+    [[NSUserDefaults standardUserDefaults] setValue:[NSKeyedArchiver archivedDataWithRootObject:[captureFlow dictionary]]
                                              forKey:FLOW_KEY];
 }
 
@@ -419,34 +436,17 @@ static JRCaptureData *singleton = nil;
     return [[JRCaptureData sharedCaptureData] captureBaseUrl];
 }
 
++ (void)setCaptureClientId:(NSString*)captureClientId {
+    [JRCaptureData sharedCaptureData].clientId = captureClientId;
+}
+
++ (void)setCaptureBaseUrl:(NSString*)baseUrl {
+    [JRCaptureData sharedCaptureData].captureBaseUrl = [baseUrl urlStringFromBaseDomain];
+}
+
 + (NSString *)clientId __unused
 {
     return [[JRCaptureData sharedCaptureData] clientId];
-}
-
-- (void)dealloc
-{
-    [clientId release];
-    [accessToken release];
-    [captureBaseUrl release];
-    [captureFlowName release];
-    [captureLocale release];
-    [captureTraditionalSignInFormName release];
-    [bpChannelUrl release];
-    [captureTraditionalRegistrationFormName release];
-    [captureFlowVersion release];
-    [captureTraditionalRegistrationFormName release];
-    [captureFlowVersion release];
-    [captureAppId release];
-    [captureAppId release];
-    [captureFlow release];
-    [refreshSecret release];
-    [captureRedirectUri release];
-    [passwordRecoverUri release];
-    [captureSocialRegistrationFormName release];
-    [captureForgottenPasswordFormName release];
-    [captureEditProfileFormName release];
-    [super dealloc];
 }
 
 + (void)clearSignInState
@@ -464,26 +464,21 @@ static JRCaptureData *singleton = nil;
     return [NSMutableURLRequest requestWithURL:[NSURL URLWithString:urlString]];
 }
 
-+ (void)setBackplaneChannelUrl:(NSString *)bpChannelUrl __unused
-{
-    [JRCaptureData sharedCaptureData].bpChannelUrl = bpChannelUrl;
-}
-
 + (void)setLinkedProfiles:(NSArray *)profileData {
     NSMutableArray *returnArray = [[NSMutableArray alloc]init];
     if([profileData count] > 0) {
         for(NSDictionary *dict in profileData) {
             
             NSDictionary *tempDict = @{
-                                       @"verifiedEmail" : ([[dict objectForKey:@"verifiedEmail"] isKindOfClass:[NSNull class]]) ? @"": [dict objectForKey:@"verifiedEmail"],
-                                       @"identifier" : [dict objectForKey:@"identifier"],
-                                       };
+                   @"verifiedEmail" : ([dict objectForKey:@"verifiedEmail"] ? [dict objectForKey:@"verifiedEmail"] : @""),
+                   @"identifier" : [dict objectForKey:@"identifier"],
+            };
             [returnArray addObject:tempDict];
         }
     }
     [JRCaptureData sharedCaptureData].linkedProfiles = profileData;
-    [returnArray release];
 }
+
 - (NSString *)responseType:(id)delegate {
     SEL captureDidSucceedWithCode = sel_registerName("captureDidSucceedWithCode:");
     if ([delegate respondsToSelector:captureDidSucceedWithCode]) {

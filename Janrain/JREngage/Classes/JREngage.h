@@ -61,8 +61,8 @@
  *   JRCapture API</a> documentation.
  **/
 
-#if  __IPHONE_OS_VERSION_MIN_REQUIRED < __IPHONE_5_0
-#error Incompatible deployment target - should be 5.0 or higher
+#if  __IPHONE_OS_VERSION_MIN_REQUIRED < __IPHONE_7_0
+#error Incompatible deployment target - should be 7.0 or higher
 #endif
 
 
@@ -80,7 +80,9 @@
 #define JRENGAGE_INCLUDE_EMAIL_SMS 1
 #endif
 
+#import <UIKit/UIKit.h>
 #import <Foundation/Foundation.h>
+
 @class JRActivityObject;
 
 /**
@@ -101,6 +103,7 @@
  * Messages sent by JREngage during dialog launch/configuration
  **/
 /*@{*/
+
 
 /**
  * Sent if the application tries to show a JREngage dialog, and JREngage failed to show. May
@@ -227,6 +230,9 @@
  * Sent when the Engage Authentication is completed successfully for Link Account Flow
  */
 - (void)engageAuthenticationDidSucceedForAccountLinking:(NSDictionary *)engageAuthInfo forProvider:(NSString *)provider;
+
+
+
 @end
 
 #define JREngageDelegate JREngageSigninDelegate
@@ -250,6 +256,8 @@
  * Messages sent by JREngage during social publishing
  **/
 /*@{*/
+
+
 
 /**
  * Sent if social sharing was canceled for any reason other than an error. For example, the user hits
@@ -296,6 +304,13 @@
 @end
 
 /**
+ * Notification sent when the Engage configuration has been updated.
+ */
+FOUNDATION_EXPORT NSString *const JRFinishedUpdatingEngageConfigurationNotification;
+FOUNDATION_EXPORT NSString *const JRFailedToUpdateEngageConfigurationNotification;
+
+
+/**
  * @brief
  * Main API for interacting with the Janrain Engage for iOS library
  *
@@ -325,6 +340,9 @@
  *   This is your 20-character application ID. You can find this on your application's Dashboard
  *   on <a href="http://rpxnow.com">http://rpxnow.com</a>. This value cannot be \e nil
  *
+ * @param appUrl
+ *   The URL of the custom Engage Server
+ *
  * @param tokenUrl
  *   The URL on your server where you wish to complete authentication. If provided,
  *   the JREngage library will post the user's authentication token to this URL where it can
@@ -335,8 +353,21 @@
  *   The delegate object that implements the JREngageSigninDelegate or JREngageSharingDelegate protocol
  *
  **/
++ (void)setEngageAppId:(NSString *)appId appUrl:(NSString *)appUrl
+              tokenUrl:(NSString *)tokenUrl
+           andDelegate:(id <JREngageSigninDelegate>)delegate;
+
+
+/**
+ * @deprecated
+ **/
 + (void)setEngageAppId:(NSString *)appId tokenUrl:(NSString *)tokenUrl
            andDelegate:(id <JREngageSigninDelegate>)delegate;
+
+/**
+ * Get the shared JREngage instance
+ */
++ (JREngage *)instance;
 
 /**
  * @deprecated
@@ -345,6 +376,14 @@
 + (JREngage *)jrEngageWithAppId:(NSString *)appId andTokenUrl:(NSString *)tokenUrl
                        delegate:(id <JREngageSigninDelegate>)delegate __attribute__((deprecated));
 /*@}*/
+
+/**
+ *  Set the Google+ client id for use with native Google+ SSO
+ *
+ *  @param clientId
+ *    Your google+ client id. Should be from the same Google+ app that is registered with Engage.
+ */
++ (void)setGooglePlusClientId:(NSString *)clientId;
 
 /**
  * @name Manage the Delegates
@@ -389,6 +428,7 @@
  *   please see the \ref authenticationProviders "List of Providers"
  **/
 + (void)showAuthenticationDialogForProvider:(NSString *)provider __unused;
+
 
 /**
  * Use this function to begin authentication. The JREngage library will pop up a modal dialog,
@@ -446,6 +486,7 @@
 **/
 + (void)showAuthenticationDialogForProvider:(NSString *)provider
                withCustomInterfaceOverrides:(NSDictionary *)customInterfaceOverrides __unused;
+
 
 /**
  * Use this function to begin social sharing. The JREngage library will pop up a modal dialog and
@@ -573,6 +614,43 @@
 + (void)setCustomInterfaceDefaults:(NSDictionary *)customInterfaceDefaults __unused;
 /*@}*/
 + (void)setCustomProviders:(NSDictionary *)customProviders __unused;
+
+/**
+ * JREngage URL handler
+ */
+
+/**
+ * JREngage application did become active handler
+ */
++ (void)applicationDidBecomeActive:(UIApplication *)application;
+
+/**
+ * This method will call the Social Login Server with the passed in provider, token, and token secret (Twitter)
+ * If the token is successfully validated the Social Login Server will return an Auth Info token for use
+ * in the subsequent authentication and registration API calls
+ *
+ * @param provider
+ *   The name of the provider on which the user will authenticate. For a list of possible strings,
+ *   please see the \ref authenticationProviders "List of Providers"
+ *
+ * @param token
+ *  access token
+ * @param tokenSecret
+ *  Twitter secret or Wechat openid value (nil for all others)
+ * @param engageAppUrl
+ *  used for non-standard Engage Servers (nil for all others)
+ **/
+
++(void)getAuthInfoTokenForNativeProvider:(NSString *)provider withToken:(NSString *)token andTokenSecret:(NSString *)tokenSecret andEngageAppUrl:(NSString *)engageAppUrl;
+
+/**
+ * @deprecated
+ **/
++(void)getAuthInfoTokenForNativeProvider:(NSString *)provider withToken:(NSString *)token andTokenSecret:(NSString *)tokenSecret;
+
+
+
+
 @end
 
 /**

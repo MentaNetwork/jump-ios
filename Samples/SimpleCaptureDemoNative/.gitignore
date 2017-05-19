@@ -1,0 +1,14 @@
+SimpleCaptureDemoNative.xcodeproj/xcuserdata/
+SimpleCaptureDemoNative.xcodeproj/*.pbxuser
+SimpleCaptureDemoNative.xcodeproj/*.perspective
+SimpleCaptureDemoNative.xcodeproj/*.perspectivev3
+SimpleCaptureDemoNative.xcodeproj/project.xcworkspace
+TwitterKit.framework/*
+TwitterCore.framework/*
+Fabric.framework/*
+GoogleSignIn.bundle/*
+GoogleSignInframework/*
+.idea/workspace.xml
+.idea/misc.xml
+*.DS_Store
+assets/janrain-config.plist

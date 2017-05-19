@@ -64,15 +64,7 @@
         poweredByLabel.textAlignment = NSTextAlignmentRight;
         poweredByLabel.autoresizingMask = UIViewAutoresizingNone | UIViewAutoresizingFlexibleLeftMargin;
 
-        poweredByLabel.text = (hidesPoweredBy) ? @"" : @"Powered by Janrain";
-
-        infoButton = [UIButton buttonWithType:UIButtonTypeInfoLight];
-        infoButton.frame = CGRectMake(width - 20, 7, 15, 15);
-        infoButton.autoresizingMask = UIViewAutoresizingNone | UIViewAutoresizingFlexibleLeftMargin;
-
-        [infoButton addTarget:self
-                       action:@selector(showInfo:)
-             forControlEvents:UIControlEventTouchUpInside];
+        poweredByLabel.text = (hidesPoweredBy) ? @"" : NSLocalizedString(@"Powered by Janrain", nil);
 
         if (iPad)
             spinner = [[UIActivityIndicatorView alloc] initWithFrame:CGRectMake(15, 15, 42, 42)];
@@ -92,7 +84,7 @@
         loadingLabel.textColor = [UIColor whiteColor];
         loadingLabel.textAlignment = JR_TEXT_ALIGN_LEFT;
         loadingLabel.autoresizingMask = UIViewAutoresizingNone | UIViewAutoresizingFlexibleRightMargin;
-        loadingLabel.text = @"Loading...";
+        loadingLabel.text = NSLocalizedString(@"Loading...", nil);
 
         [self addSubview:barBackground];
         [self addSubview:poweredByLabel];
@@ -109,59 +101,6 @@
     }
 
     return self;
-}
-
-- (void)actionSheet:(UIActionSheet *)actionSheet willDismissWithButtonIndex:(NSInteger)buttonIndex
-{
-    if (!iPad)
-    {
-        [UIView beginAnimations:@"fade" context:nil];
-        [UIView setAnimationDuration:0.2];
-        [UIView setAnimationDelay:0.0];
-        self.alpha = 0.8;
-        [UIView commitAnimations];
-    }
-}
-
-- (void)willPresentActionSheet:(UIActionSheet *)actionSheet
-{
-    if (!iPad)
-    {
-        [UIView beginAnimations:@"fade" context:nil];
-        [UIView setAnimationDuration:0.2];
-        [UIView setAnimationDelay:0.0];
-        self.alpha = 0.0;
-        [UIView commitAnimations];
-    }
-}
-
-- (void)showInfo:(id <UIActionSheetDelegate>)delegate
-{
-    [[JRInfoBar getInfoSheet:self] showInView:self.superview];
-}
-
-+ (UIActionSheet *)getInfoSheet:(id <UIActionSheetDelegate>)delegate
-{
-    DLog(@"");
-
-    NSDictionary *infoPlist = [NSDictionary dictionaryWithContentsOfFile:
-                                                    [[[NSBundle mainBundle] resourcePath]
-                                                            stringByAppendingPathComponent:@"/JREngage-Info.plist"]];
-
-    // todo don't use this key, since this isn't actually a CFBundleShortVersionString value, it's just a string we
-    // stick a Janrain release version number in.
-    NSString *version = [infoPlist objectForKey:@"CFBundleShortVersionString"];
-
-    version = [version stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-
-    NSString *verString = [NSString stringWithFormat:
-                                            @"Janrain Engage for iPhone Library\nVersion %@\nwww.janrain.com", version];
-    UIActionSheet *actionSheet = [[[UIActionSheet alloc] initWithTitle:verString
-                                                              delegate:delegate
-                                                     cancelButtonTitle:@"OK"
-                                                destructiveButtonTitle:nil otherButtonTitles:nil] autorelease];
-    actionSheet.actionSheetStyle = UIActionSheetStyleBlackTranslucent;
-    return actionSheet;
 }
 
 - (void)startProgress
@@ -208,12 +147,6 @@
 
 - (void)dealloc
 {
-    [barBackground release];
-    [poweredByLabel release];
-    [spinner release];
-    [loadingLabel release];
-
-    [super dealloc];
 }
 
 @end

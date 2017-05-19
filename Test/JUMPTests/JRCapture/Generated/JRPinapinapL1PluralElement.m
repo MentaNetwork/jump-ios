@@ -66,7 +66,7 @@
     NSMutableArray *filteredDictionaryArray = [NSMutableArray arrayWithCapacity:[self count]];
     for (NSObject *object in self)
         if ([object isKindOfClass:[JRPinapinapL2PluralElement class]])
-            [filteredDictionaryArray addObject:[(JRPinapinapL2PluralElement*)object toDictionaryForEncoder:forEncoder]];
+            [filteredDictionaryArray addObject:[(JRPinapinapL2PluralElement*)object newDictionaryForEncoder:forEncoder]];
 
     return filteredDictionaryArray;
 }
@@ -126,7 +126,6 @@
 {
     [self.dirtyPropertySet addObject:@"string1"];
 
-    [_string1 autorelease];
     _string1 = [newString1 copy];
 }
 
@@ -139,7 +138,6 @@
 {
     [self.dirtyPropertySet addObject:@"string2"];
 
-    [_string2 autorelease];
     _string2 = [newString2 copy];
 }
 
@@ -150,7 +148,6 @@
 
 - (void)setPinapinapL2Plural:(NSArray *)newPinapinapL2Plural
 {
-    [_pinapinapL2Plural autorelease];
     _pinapinapL2Plural = [newPinapinapL2Plural copy];
 }
 
@@ -169,12 +166,12 @@
 
 + (id)pinapinapL1PluralElement
 {
-    return [[[JRPinapinapL1PluralElement alloc] init] autorelease];
+    return [[JRPinapinapL1PluralElement alloc] init];
 }
 
-- (NSDictionary*)toDictionaryForEncoder:(BOOL)forEncoder
+- (NSDictionary*)newDictionaryForEncoder:(BOOL)forEncoder
 {
-    NSMutableDictionary *dictionary = 
+    NSMutableDictionary *dictionary =
         [NSMutableDictionary dictionaryWithCapacity:10];
 
     [dictionary setObject:(self.string1 ? self.string1 : [NSNull null])
@@ -190,10 +187,10 @@
                        forKey:@"dirtyPropertiesSet"];
         [dictionary setObject:(self.captureObjectPath ? self.captureObjectPath : [NSNull null])
                        forKey:@"captureObjectPath"];
-        [dictionary setObject:[NSNumber numberWithBool:self.canBeUpdatedOnCapture] 
+        [dictionary setObject:[NSNumber numberWithBool:self.canBeUpdatedOnCapture]
                        forKey:@"canBeUpdatedOnCapture"];
     }
-    
+
     return [NSDictionary dictionaryWithDictionary:dictionary];
 }
 
@@ -214,7 +211,7 @@
     }
     else
     {
-        pinapinapL1PluralElement.captureObjectPath      = [NSString stringWithFormat:@"%@/%@#%d", capturePath, @"pinapinapL1Plural", [(NSNumber*)[dictionary objectForKey:@"id"] integerValue]];
+        pinapinapL1PluralElement.captureObjectPath      = [NSString stringWithFormat:@"%@/%@#%ld", capturePath, @"pinapinapL1Plural", (long)[(NSNumber*)[dictionary objectForKey:@"id"] integerValue]];
         pinapinapL1PluralElement.canBeUpdatedOnCapture = YES;
     }
 
@@ -234,7 +231,7 @@
         [pinapinapL1PluralElement.dirtyPropertySet setSet:dirtyPropertySetCopy];
     else
         [pinapinapL1PluralElement.dirtyPropertySet removeAllObjects];
-    
+
     return pinapinapL1PluralElement;
 }
 
@@ -247,10 +244,10 @@
 {
     DLog(@"%@ %@", capturePath, [dictionary description]);
 
-    NSSet *dirtyPropertySetCopy = [[self.dirtyPropertySet copy] autorelease];
+    NSSet *dirtyPropertySetCopy = [self.dirtyPropertySet copy];
 
     self.canBeUpdatedOnCapture = YES;
-    self.captureObjectPath = [NSString stringWithFormat:@"%@/%@#%d", capturePath, @"pinapinapL1Plural", [(NSNumber*)[dictionary objectForKey:@"id"] integerValue]];
+    self.captureObjectPath = [NSString stringWithFormat:@"%@/%@#%ld", capturePath, @"pinapinapL1Plural", (long)[(NSNumber*)[dictionary objectForKey:@"id"] integerValue]];
 
     self.string1 =
         [dictionary objectForKey:@"string1"] != [NSNull null] ? 
@@ -283,7 +280,7 @@
     NSMutableDictionary *snapshotDictionary =
              [NSMutableDictionary dictionaryWithCapacity:10];
 
-    [snapshotDictionary setObject:[[self.dirtyPropertySet copy] autorelease] forKey:@"pinapinapL1PluralElement"];
+    [snapshotDictionary setObject:[self.dirtyPropertySet copy] forKey:@"pinapinapL1PluralElement"];
 
     return [NSDictionary dictionaryWithDictionary:snapshotDictionary];
 }
@@ -366,7 +363,7 @@
 
 - (NSDictionary*)objectProperties
 {
-    NSMutableDictionary *dictionary = 
+    NSMutableDictionary *dictionary =
         [NSMutableDictionary dictionaryWithCapacity:10];
 
     [dictionary setObject:@"NSString" forKey:@"string1"];
@@ -376,12 +373,4 @@
     return [NSDictionary dictionaryWithDictionary:dictionary];
 }
 
-- (void)dealloc
-{
-    [_string1 release];
-    [_string2 release];
-    [_pinapinapL2Plural release];
-
-    [super dealloc];
-}
 @end

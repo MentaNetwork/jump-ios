@@ -39,8 +39,11 @@
 #import "JRProvidersController.h"
 #import "JRInfoBar.h"
 #import "JRUserLandingController.h"
-#import "JRNativeAuth.h"
 #import "JREngageError.h"
+#import "JRCompatibilityUtils.h"
+#import "JROpenIDAppAuth.h"
+#import "JROpenIDAppAuthProvider.h"
+
 
 @interface UITableViewCellProviders : UITableViewCell
 @end
@@ -67,8 +70,9 @@
 @interface JRProvidersController ()
 - (void)createTraditionalSignInLoadingView;
 
-@property(retain) NSMutableArray *providers;
-@property(retain) UIView *myTraditionalSignInLoadingView;
+@property NSMutableArray *providers;
+@property UIView *myTraditionalSignInLoadingView;
+@property(nonatomic) JROpenIDAppAuthProvider *openIDAppAuthProvider;
 @end
 
 @implementation JRProvidersController
@@ -101,7 +105,7 @@
     if ((self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil]))
     {
         sessionData = [JRSessionData jrSessionData];
-        customInterface = [theCustomInterface retain];
+        customInterface = theCustomInterface;
     }
 
     return self;
@@ -143,9 +147,14 @@
     id const maybeCaptureSignInVc = [customInterface objectForKey:kJRCaptureTraditionalSignInViewController];
     if ([maybeCaptureSignInVc isKindOfClass:NSClassFromString(@"JRTraditionalSignInViewController")])
     {
-        [maybeCaptureSignInVc performSelector:NSSelectorFromString(@"setDelegate:") withObject:self];
-
+        if ([maybeCaptureSignInVc respondsToSelector:@selector(setDelegate:)]){
+            [maybeCaptureSignInVc setDelegate:((id<NSFileManagerDelegate>)self)];
+        } else {
+            DLog(@"setDelegate selector not found on object %@", maybeCaptureSignInVc);
+            // TODO: NSAssert here?
+        }
         [self createTraditionalSignInLoadingView];
+
     }
 
     if (!hidesCancelButton)
@@ -208,7 +217,7 @@
 {
     DLog(@"");
     [super viewWillAppear:animated];
-    self.contentSizeForViewInPopover = self.view.frame.size;
+    [self jrSetContentSizeForViewInPopover:self.view.frame.size];
 
     // Load the custom background view, if there is one.
     if ([customInterface objectForKey:kJRAuthenticationBackgroundImageView])
@@ -239,9 +248,7 @@
     {
         self.providers = [NSMutableArray arrayWithArray:sessionData.authenticationProviders];
         [providers removeObjectsInArray:[customInterface objectForKey:kJRRemoveProvidersFromAuthentication]];
-        [myActivitySpinner stopAnimating];
-        [myActivitySpinner setHidden:YES];
-        [myLoadingLabel setHidden:YES];
+        [self stopActivityIndicator];
 
         // Load the table with the list of providers.
         [myTableView reloadData];
@@ -285,7 +292,7 @@
 
     timer = nil;
 
-    DLog(@"prov count = %d", [sessionData.authenticationProviders count]);
+    DLog(@"prov count = %lu", (unsigned long)[sessionData.authenticationProviders count]);
     DLog(@"interval = %f", interval);
 
     if ([sessionData.authenticationProviders count] > 0)
@@ -294,9 +301,7 @@
         self.providers = [NSMutableArray arrayWithArray:sessionData.authenticationProviders];
         [providers removeObjectsInArray:[customInterface objectForKey:kJRRemoveProvidersFromAuthentication]];
 
-        [myActivitySpinner stopAnimating];
-        [myActivitySpinner setHidden:YES];
-        [myLoadingLabel setHidden:YES];
+        [self stopActivityIndicator];
 
         [myTableView reloadData];
 
@@ -308,9 +313,7 @@
         // Polling has timed out
         DLog(@"No Available Providers");
 
-        [myActivitySpinner setHidden:YES];
-        [myLoadingLabel setHidden:YES];
-        [myActivitySpinner stopAnimating];
+        [self stopActivityIndicator];
 
         UIApplication *app = [UIApplication sharedApplication];
         app.networkActivityIndicatorVisible = YES;
@@ -321,8 +324,8 @@
                                                                                    @"Alert view title - Janrain")
                                                          message:message
                                                         delegate:self
-                                               cancelButtonTitle:@"OK"
-                                               otherButtonTitles:nil] autorelease];
+                                               cancelButtonTitle:NSLocalizedString(@"OK",nil)
+                                               otherButtonTitles:nil];
         [alert show];
         return;
     }
@@ -372,13 +375,13 @@
 
 - (void)createTraditionalSignInLoadingView
 {
-    self.myTraditionalSignInLoadingView = [[[UIView alloc] initWithFrame:self.view.frame] autorelease];
+    self.myTraditionalSignInLoadingView = [[UIView alloc] initWithFrame:self.view.frame];
 
     [self.myTraditionalSignInLoadingView setBackgroundColor:[UIColor blackColor]];
 
-    UILabel *loadingLabel = [[[UILabel alloc] initWithFrame:CGRectMake(0, 180, 320, 30)] autorelease];
+    UILabel *loadingLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 180, 320, 30)];
 
-    [loadingLabel setText:@"Completing Sign-In..."];
+    [loadingLabel setText:NSLocalizedString(@"Completing Sign-In...",nil)];
     [loadingLabel setFont:[UIFont systemFontOfSize:20.0]];
     [loadingLabel setTextAlignment:(int)JR_TEXT_ALIGN_CENTER];
     [loadingLabel setTextColor:[UIColor whiteColor]];
@@ -391,7 +394,6 @@
 
     UIActivityIndicatorView *loadingSpinner =
             [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleWhiteLarge];
-    [loadingSpinner autorelease];
 
     [loadingSpinner setFrame:CGRectMake(142, self.view.frame.size.height / 2 - 16, 37, 37)];
     [loadingLabel setAutoresizingMask:UIViewAutoresizingNone |
@@ -471,7 +473,7 @@
     else if (![customInterface objectForKey:kJRProviderTableSectionFooterTitleString])
     {
         CGRect frame = CGRectMake(0, 0, myTableView.frame.size.width, infoBar.frame.size.height);
-        return [[[UIView alloc] initWithFrame:frame] autorelease];
+        return [[UIView alloc] initWithFrame:frame];
     }
     else
     {
@@ -500,8 +502,8 @@
             (UITableViewCellProviders *) [tableView dequeueReusableCellWithIdentifier:@"cachedCell"];
 
     if (cell == nil)
-        cell = [[[UITableViewCellProviders alloc]
-                initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"cachedCell"] autorelease];
+        cell = [[UITableViewCellProviders alloc]
+                initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"cachedCell"];
 
     JRProvider *provider = [sessionData getProviderNamed:[providers objectAtIndex:(NSUInteger) indexPath.row]];
 
@@ -523,35 +525,35 @@
 {
     DLog(@"");
     [tableView deselectRowAtIndexPath:indexPath animated:NO];
-
+    
     // Let sessionData know which provider the user selected
     JRProvider *provider = [sessionData getProviderNamed:[providers objectAtIndex:(NSUInteger) indexPath.row]];
-    if ([JRNativeAuth canHandleProvider:provider.name])
+    if ([JROpenIDAppAuth canHandleProvider:provider.name])
     {
         [UIView animateWithDuration:0.3 animations:^() {
             myTableView.hidden = YES;
             [myActivitySpinner setHidden:NO];
             [myLoadingLabel setHidden:NO];
             [myActivitySpinner startAnimating];
-            myLoadingLabel.text = @"Signing in ...";
+            myLoadingLabel.text = NSLocalizedString(@"Signing in ...",nil);
         }];
-        [JRNativeAuth startAuthOnProvider:provider.name completion:^(NSError *e) {
-            if (e)
-            {
-                if ([e.domain isEqualToString:JREngageErrorDomain] && e.code == JRAuthenticationCanceledError)
-                {
+        
+        [sessionData setCurrentProvider:provider];
+        
+        self.openIDAppAuthProvider = [JROpenIDAppAuth openIDAppAuthProviderNamed:provider.name];
+        [self.openIDAppAuthProvider startAuthenticationWithCompletion:^(NSError *e) {
+            if (e) {
+                if ([e.domain isEqualToString:JREngageErrorDomain] && e.code == JRAuthenticationCanceledError) {
                     [sessionData triggerAuthenticationDidCancel];
-                }
-                else
-                {
-                    [UIView animateWithDuration:0.3 animations:^() {
-                        myTableView.hidden = NO;
-                        [myActivitySpinner setHidden:YES];
-                        [myLoadingLabel setHidden:YES];
-                        [myActivitySpinner stopAnimating];
-                    }];
-
+                } else if ([e.domain isEqualToString:JREngageErrorDomain]
+                           && e.code == JRAuthenticationShouldTryWebViewError) {
+                    self.myTableView.hidden = NO;
+                    [self stopActivityIndicator];
                     [self startWebViewAuthOnProvider:provider];
+                } else {
+                    myTableView.hidden = NO;
+                    [self stopActivityIndicator];
+                    [sessionData triggerAuthenticationDidFailWithError:e];
                 }
             }
         }];
@@ -561,7 +563,6 @@
         [self startWebViewAuthOnProvider:provider];
     }
 }
-
 - (void)startWebViewAuthOnProvider:(JRProvider *)provider
 {
     [sessionData setCurrentProvider:provider];
@@ -583,6 +584,12 @@
 
 }
 
+- (void)stopActivityIndicator {
+    [myActivitySpinner stopAnimating];
+    [myActivitySpinner setHidden:YES];
+    [myLoadingLabel setHidden:YES];
+}
+
 - (void)userInterfaceWillClose
 {
     [timer invalidate];
@@ -595,15 +602,5 @@
 - (void)dealloc
 {
     DLog(@"");
-
-    [customInterface release];
-    [myBackgroundView release];
-    [myTableView release];
-    [myLoadingLabel release];
-    [myActivitySpinner release];
-    [infoBar release];
-    [providers release];
-    [myTraditionalSignInLoadingView release];
-    [super dealloc];
 }
 @end
