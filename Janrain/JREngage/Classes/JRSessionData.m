@@ -1824,7 +1824,7 @@ static JRSessionData *singleton = nil;
             [delegate authenticationDidSkip];
     }
     
-    [currentProvider release], currentProvider = nil;
+    currentProvider = nil;
 }
 
 - (void)triggerAuthenticationDidTimeOutConfiguration

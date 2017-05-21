@@ -320,7 +320,7 @@
 
         NSString *message = NSLocalizedString(@"There are no available providers. Please try again later.",
                                               @"Alert view message - Janrain");
-        UIAlertView *alert = [[[UIAlertView alloc] initWithTitle:NSLocalizedString(@"No Available Providers",
+        UIAlertView *alert = [[UIAlertView alloc] initWithTitle:NSLocalizedString(@"No Available Providers",
                                                                                    @"Alert view title - Janrain")
                                                          message:message
                                                         delegate:self
